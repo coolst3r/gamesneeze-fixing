@@ -91,10 +91,14 @@ public:
 		return getVirtualFunc<Fn>(this, 12)(this);
 	}
 
-	// Copy current view orientation into va
-	void GetViewAngles(QAngle& angle) {
-		typedef void (*Fn)(void*, QAngle&);
-		return getVirtualFunc<Fn>(this, 18)(this, angle);
+	QAngle viewAngle() {
+		typedef void (* Fn)(IVEngineClient *, QAngle&);
+
+		auto angle = QAngle{0.0f, 0.0f, 0.0f};
+
+		getVirtualFunc<Fn>(this, 18)(this, angle);
+
+		return angle;
 	}
 
     // Retrieve the current game's maxclients setting
@@ -124,9 +128,14 @@ public:
 	// And then executes the command string immediately (vs ClientCmd() which executes in the next frame)
 	//
 	// Note: this is NOT checked against the FCVAR_CLIENTCMD_CAN_EXECUTE vars.
-	void ExecuteClientCmd(const char* szCmdString) {
-		typedef void (*Fn)(void*, const char*);
+	void ExecuteClientCmd(const char *szCmdString) {
+		typedef void (*Fn)(void *, const char *);
 		return getVirtualFunc<Fn>(this, 108)(this, szCmdString);
+	}
+
+	void ExecuteClientCmdUnrestricted(const char *szCmdString) {
+		typedef void (*Fn)(void *, const char *);
+		return getVirtualFunc<Fn>(this, 113)(this, szCmdString);
 	}
 
 	bool IsVoiceRecording() {

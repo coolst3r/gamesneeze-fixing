@@ -7,6 +7,7 @@ void Features::PlayerList::draw() {
         ImGui::Begin("Player List", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | (Menu::open ? 0 : ImGuiWindowFlags_NoMouseInputs));
         ImGui::Text("Players");
         ImGui::Separator();
+
         if (Interfaces::engine->IsInGame() && Globals::localPlayer) {
             ImGui::Columns(3, NULL);
             ImGui::Text("Name");
@@ -15,10 +16,13 @@ void Features::PlayerList::draw() {
             ImGui::NextColumn();
             ImGui::Text("Money");
             ImGui::NextColumn();
+
             static Player* selectedPlayer;
             static player_info_t selectedPlayerInfo;
+
             for (int i = 1; i < Interfaces::globals->maxClients; i++) {
-                Player* p = (Player*)Interfaces::entityList->GetClientEntity(i);
+                auto p = Interfaces::entityList->player(i);
+
                 if (p) {
                     ImGui::Separator();
                     player_info_t info;
@@ -43,18 +47,20 @@ void Features::PlayerList::draw() {
                     ImGui::NextColumn();
                 }
             }
-            if (ImGui::BeginPopup("Player Popup")){
+
+            if (ImGui::BeginPopup("Player Popup")) {
                 ImGui::Text("Player Options | %s", selectedPlayerInfo.name);
                 ImGui::Separator();
+
                 if (selectedPlayer) {
                     ImGui::Text("Name: %s", selectedPlayerInfo.name); ImGui::SameLine(); if (ImGui::Button("Steal Name")) {
-                        static auto nameConvar = Interfaces::convar->FindVar("name");
-                        nameConvar->fnChangeCallback = 0;
+                        Vars::name->fnChangeCallback = 0;
                         
                         char* name = selectedPlayerInfo.name;
                         strcat(name, " ");
-                        nameConvar->SetValue(name);
+                        Vars::name->SetValue(name);
                     }
+
                     ImGui::Text("GUID: %s", selectedPlayerInfo.guid);
                     ImGui::Text("XUID: %li", selectedPlayerInfo.xuid);
                     

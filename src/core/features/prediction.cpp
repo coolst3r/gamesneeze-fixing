@@ -4,16 +4,17 @@
 float m_flOldCurtime;
 float m_flOldFrametime;
 
-void Features::Prediction::start(CUserCmd* cmd) {
+void Features::Prediction::start(Command* cmd) {
     inPrediction = true;
+
     if (Globals::localPlayer) {
         *Offsets::predictionSeed = rand() & 0x7FFFFFFF;
 
-        m_flOldCurtime = Interfaces::globals->curtime;
-        m_flOldFrametime = Interfaces::globals->frametime;
+        m_flOldCurtime = Interfaces::globals->currentTime;
+        m_flOldFrametime = Interfaces::globals->frameTime;
 
-        Interfaces::globals->curtime = Globals::localPlayer->tickbase() * Interfaces::globals->interval_per_tick;
-        Interfaces::globals->frametime = Interfaces::globals->interval_per_tick;
+        Interfaces::globals->currentTime = Globals::localPlayer->tickbase() * Interfaces::globals->intervalPerTick;
+        Interfaces::globals->frameTime = Interfaces::globals->intervalPerTick;
 
         Interfaces::movement->StartTrackPredictionErrors(Globals::localPlayer);
 
@@ -31,9 +32,10 @@ void Features::Prediction::end() {
 
         *Offsets::predictionSeed = -1;
 
-        Interfaces::globals->curtime = m_flOldCurtime;
-        Interfaces::globals->frametime = m_flOldFrametime;
+        Interfaces::globals->currentTime = m_flOldCurtime;
+        Interfaces::globals->frameTime = m_flOldFrametime;
     }
+
     inPrediction = false;
 }
 

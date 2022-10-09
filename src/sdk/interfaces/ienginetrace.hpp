@@ -4,8 +4,7 @@
 #include "interfaces.hpp"
 #include "../classes/entity.hpp"
 
-struct Plane
-{
+struct Plane {
 	Vector normal;
 	float dist;
 	unsigned char type;
@@ -13,15 +12,13 @@ struct Plane
 	unsigned char pad[2];
 };
 
-struct Surface
-{
+struct Surface {
 	const char *name;
 	short surfaceProps;
 	unsigned short flags;
 };
 
-struct Trace
-{
+struct Trace {
 	Vector startpos;
 	Vector endpos;
 	Plane plane;
@@ -42,27 +39,84 @@ struct Trace
 	short physicsbone;
 
 	unsigned short worldSurfaceIndex;
-	Player* m_pEntityHit;
+	Player *m_pEntityHit;
 	int hitbox;
 };
 
-struct Ray
-{
+class IHandleEntity {
+public:
+	virtual ~IHandleEntity() {  };
+};
+
+class ITraceFilter {
+public:
+	virtual bool ShouldHitEntity(Player *pEntity, int contentsMask) = 0;
+
+	virtual int GetTraceType() const = 0;
+};
+
+class TraceFilter : public ITraceFilter {
+public:
+	bool ShouldHitEntity(Player* pEntityHandle, int contentsMask) {
+		return !(pEntityHandle == pSkip);
+	}
+
+	virtual int GetTraceType() const {
+		return 0;
+	}
+
+	void *pSkip;
+};
+
+struct Ray;
+
+class IEngineTrace {
+public:
+	int getPointContents(const Vector &vecAbsPos, int contentsMask = 0xFFFFFFFF, IHandleEntity **ppEntity = nullptr) {
+		typedef int (* Fn)(void *, const Vector &, int contentsMask, IHandleEntity **);
+
+		return getVirtualFunc<Fn>(this, 0)(this, vecAbsPos, contentsMask, ppEntity);
+	}
+
+	void ClipRayToEntity(Ray &ray, unsigned int fMask, IHandleEntity *pTraceFilter, Trace *pTrace) {
+		typedef void (* Fn)(void *, Ray&, unsigned int, IHandleEntity *, Trace *);
+		return getVirtualFunc<Fn>(this, 3)(this, ray, fMask, pTraceFilter, pTrace);
+	}
+
+	void TraceRay(Ray &ray, unsigned int fMask, ITraceFilter *pTraceFilter, Trace *pTrace) {
+		typedef void (* Fn)(void *, Ray&, unsigned int, ITraceFilter *, Trace *);
+		return getVirtualFunc<Fn>(this, 5)(this, ray, fMask, pTraceFilter, pTrace);
+	}
+
+	inline void clipToEntity(Ray *ray, unsigned int mask, IHandleEntity *filter, Trace *trace) {
+		typedef void (* Fn)(void *, Ray *, unsigned int, IHandleEntity *, Trace *);
+
+		return getVirtualFunc<Fn>(this, 3)(this, ray, mask, filter, trace);
+	}
+
+	inline void trace(Ray *ray, unsigned int mask, ITraceFilter *filter, Trace *trace) {
+		typedef void (* Fn)(void *, Ray *, unsigned int, ITraceFilter *, Trace *);
+
+		return getVirtualFunc<Fn>(this, 5)(this, ray, mask, filter, trace);
+	}
+};
+
+namespace Interfaces {
+    extern IEngineTrace *trace;
+}
+
+struct Ray {
 	VectorAligned m_Start;
 	VectorAligned m_Delta;
 	VectorAligned m_StartOffset;
 	VectorAligned m_Extents;
 
-	const matrix3x4_t *m_pWorldAxisTransform;
+	const Matrix3x4 *m_pWorldAxisTransform;
 
 	bool m_IsRay;
 	bool m_IsSwept;
 
-	Ray() : m_pWorldAxisTransform(nullptr)
-	{}
-
-	void Init(Vector vecStart, Vector vecEnd)
-	{
+	Ray(Vector vecStart, Vector vecEnd) : m_pWorldAxisTransform(nullptr) {
 		m_Delta = vecEnd - vecStart;
 		m_IsSwept = (m_Delta.LengthSqr() != 0);
 		m_Extents.x = m_Extents.y = m_Extents.z = 0.0f;
@@ -72,8 +126,7 @@ struct Ray
 		m_Start = vecStart;
 	}
 
-	void Init(Vector const &start, Vector const &end, Vector const &mins, Vector const &maxs)
-	{
+	Ray(Vector const &start, Vector const &end, Vector const &mins, Vector const &maxs) : m_pWorldAxisTransform(nullptr) {
 		m_Delta = end - start;
 
 		m_pWorldAxisTransform = NULL;
@@ -89,37 +142,24 @@ struct Ray
 		m_Start = start + m_StartOffset;
 		m_StartOffset *= -1.0f;
 	}
-};
-
-class ITraceFilter
-{
-public:
-	virtual bool ShouldHitEntity(Player* pEntity, int contentsMask) = 0;
-
-	virtual int GetTraceType() const = 0;
-};
-
-class TraceFilter : public ITraceFilter
-{
-public:
-	bool ShouldHitEntity(Player* pEntityHandle, int contentsMask)
-	{
-		return !(pEntityHandle == pSkip);
+	
+	inline void filteredTrace(
+		unsigned int mask,
+		TraceFilter *filter,
+		Trace *trace
+	) {
+	    Interfaces::trace->trace(this, mask, filter, trace);
 	}
 
-	virtual int GetTraceType() const
-	{
-		return 0;
-	}
+	inline void ignoredTrace(
+	    unsigned int mask,
+	    Player *ignore,
+	    Trace *trace
+	) {
+		TraceFilter filter;
+	
+		filter.pSkip = ignore;
 
-	void *pSkip;
-};
-
-class IEngineTrace {
-public:
-	const char* TraceRay(Ray &ray, unsigned int fMask, ITraceFilter *pTraceFilter,  Trace  *pTrace) {
-		typedef const char* (*Fn)(void*, Ray&, unsigned int, ITraceFilter*, Trace*);
-		return getVirtualFunc<Fn>(this, 5)(this, ray, fMask, pTraceFilter, pTrace);
+	    filteredTrace(mask, &filter, trace);
 	}
 };
-

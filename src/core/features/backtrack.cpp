@@ -3,62 +3,103 @@
 #include <cfloat>
 #include <cstring>
 
-void Features::Backtrack::store(CUserCmd *cmd) {
-    if (CONFIGBOOL("Legit>Backtrack>Backtrack") && cmd->tick_count != 0 && Interfaces::engine->IsInGame() && Globals::localPlayer) {
-        // Store
-        BackTrackTick currentTick;
-        for (int i = 1; i < Interfaces::globals->maxClients; i++) {
-            Player* p = (Player*)Interfaces::entityList->GetClientEntity(i);
-            if (p) {
-                if (p->health() > 0 && !p->dormant() && p != Globals::localPlayer && p->isEnemy()) {
-                    BacktrackPlayer player;
-                    player.playerIndex = i;
-                    player.playerFlags = p->flags();
-                    player.playerVelocity = p->velocity().Length2D();
-                    if (p->getAnythingBones(player.boneMatrix)) {
-                        currentTick.players.insert(std::pair<int, BacktrackPlayer>(i, player));
-                    }
-                    player.playerHeadPos = Vector(player.boneMatrix[8][0][3], player.boneMatrix[8][1][3], player.boneMatrix[8][2][3]);
-                }
-                else {
-                    if (currentTick.players.find(i) != currentTick.players.end()) {
-                        currentTick.players.erase(i);
-                    }
-                }
-            }
-        }
-        currentTick.tickCount = cmd->tick_count;
-        backtrackTicks.insert(backtrackTicks.begin(), currentTick);
+void Features::Backtrack::store(Command *cmd) {
+    if (!CONFIGBOOL("Legit>Backtrack>Backtrack")) {
+        return;
+    }
 
-        // Delete ticks we cant backtrack
-        while ((int)backtrackTicks.size() > CONFIGINT("Legit>Backtrack>Backtrack Ticks")) {
-            backtrackTicks.pop_back();
+    if (!Interfaces::engine->IsInGame()) {
+        return;
+    }
+
+    if (Globals::localPlayer == nullptr) {
+        return;
+    }
+
+    // Store
+    BackTrackTick currentTick;
+
+    for (int i = 1; i < Interfaces::globals->maxClients; ++i) {
+        auto player = Interfaces::entityList->player(i);
+
+        if (player == nullptr) {
+            continue;
         }
+
+        if (!player->hittable()) {
+            if (currentTick.players.find(i) != currentTick.players.end()) {
+                currentTick.players.erase(i);
+            }
+
+            continue;
+        }
+
+        BacktrackPlayer backtrack;
+
+        backtrack.playerIndex = i;
+        backtrack.playerFlags = player->flags();
+        backtrack.playerVelocity = player->velocity().Length2D();
+
+        if (player->getAnythingBones(backtrack.boneMatrix)) {
+            currentTick.players.insert(std::pair<int, BacktrackPlayer>(
+                i,
+                backtrack
+            ));
+        }
+            
+        backtrack.playerHeadPos = Vector{
+            backtrack.boneMatrix[8][0][3],
+            backtrack.boneMatrix[8][1][3],
+            backtrack.boneMatrix[8][2][3]
+        };
+    }
+
+    currentTick.tickCount = cmd->tickCount;
+    backtrackTicks.insert(backtrackTicks.begin(), currentTick);
+
+    // Delete ticks we cant backtrack
+    while (static_cast<int>(backtrackTicks.size()) > CONFIGINT("Legit>Backtrack>Backtrack Ticks")) {
+        backtrackTicks.pop_back();
     }
 }
 
-void Features::Backtrack::createMove(CUserCmd* cmd) {
-    if (CONFIGBOOL("Legit>Backtrack>Backtrack") && cmd->tick_count != 0 && Interfaces::engine->IsInGame() && Globals::localPlayer) {
-        // Find how far we should backtrack in this tick
-        QAngle viewAngles;
-        Interfaces::engine->GetViewAngles(viewAngles);
-        viewAngles += Globals::localPlayer->aimPunch() * 2;
+void Features::Backtrack::createMove(Command *cmd) {
+    if (!CONFIGBOOL("Legit>Backtrack>Backtrack")) {
+        return;
+    }
 
-        float closestDelta = FLT_MAX;
-        int closestTick = cmd->tick_count;
+    if (cmd->tickCount == 0) {
+        return;
+    }
 
-        if (cmd->buttons & (1 << 0)) {
-            for (BackTrackTick tick : backtrackTicks) {
-                for (auto player : tick.players) {
-                    Player* p = (Player*)Interfaces::entityList->GetClientEntity(player.second.playerIndex);
-                    if (p) {
-                        if (p->health() > 0 && !p->dormant()) {
-                            Vector localPlayerEyePos = Globals::localPlayer->eyePos();
+    if (!Interfaces::engine->IsInGame()) {
+        return;
+    }
+
+    if (Globals::localPlayer == nullptr) {
+        return;
+    }
+
+    // Find how far we should backtrack in this tick
+    auto viewAngle = Interfaces::engine->viewAngle();
+    viewAngle += Globals::localPlayer->aimPunch() * 2;
+
+    float closestDelta = FLT_MAX;
+    int closestTick = cmd->tickCount;
+
+    if (cmd->buttons & IN_ATTACK) {
+        for (BackTrackTick tick : backtrackTicks) {
+            for (auto player : tick.players) {
+                auto p = Interfaces::entityList->player(player.second.playerIndex);
+                
+                if (p) {
+                    if (p->health() > 0 && !p->dormant()) {
+                        Vector localPlayerEyePos = Globals::localPlayer->eyePos();
 
                             Vector targetEyePos = Vector(player.second.boneMatrix[8][0][3], player.second.boneMatrix[8][1][3], player.second.boneMatrix[8][2][3]); // 8 is headbone in bonematrix
 
                             QAngle angleToCurrentPlayer = calcAngle(localPlayerEyePos, targetEyePos);
-                            angleToCurrentPlayer -= viewAngles;
+                            angleToCurrentPlayer -= viewAngle;
                             if (angleToCurrentPlayer.y > 180.f) {
                                 angleToCurrentPlayer.y -= 360.f;
                             }
@@ -80,7 +121,7 @@ void Features::Backtrack::createMove(CUserCmd* cmd) {
                 }
             }
         }
-        lastBacktrack = cmd->tick_count - closestTick; // To show how much you backtracked in hitlogs
-        cmd->tick_count = closestTick;
-    }
+
+    lastBacktrack = cmd->tickCount - closestTick; // To show how much you backtracked in hitlogs
+    cmd->tickCount = closestTick;
 }

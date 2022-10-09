@@ -1,17 +1,13 @@
 #pragma once
 #include "../classes/vector.h"
 
-class CInput {
-public:
-	char _pad0[0xB4];
-	bool m_fCameraInterceptingMouse;
-	bool m_fCameraInThirdPerson;
-	bool m_fCameraMovingWithMouse;
-	Vector m_vecCameraOffset;
-	bool m_fCameraDistanceMove;
-	int m_nCameraOldX;
-	int m_nCameraOldY;
-	int m_nCameraX;
-	int m_nCameraY;
-	bool m_CameraIsOrthographic;
+struct CInput {
+	std::byte _pad0[16];
+	bool is_track_ir_available;
+	bool is_mouse_iniialized;
+	bool is_mouse_active;
+	std::byte _pad1[162];
+	bool thirdperson;
+	bool camera_moving_with_mouse;
+	Vector offset;
 };

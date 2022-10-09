@@ -54,8 +54,6 @@ void Menu::drawLegitTab() {
                 ImGui::SliderInt("##Smoothing", &CONFIGINT("Legit>LegitBot>Default>Smoothing"), 0, 100);
                 ImGui::Checkbox("Recoil Compensation", &CONFIGBOOL("Legit>LegitBot>Default>Recoil Compensation"));
                 ImGui::Checkbox("Aim While Blind", &CONFIGBOOL("Legit>LegitBot>Default>Aim While Blind"));
-
-
                 ImGui::EndTabItem();
             }
             if (ImGui::BeginTabItem("Pistol")) {
@@ -152,10 +150,13 @@ void Menu::drawLegitTab() {
 
                 ImGui::EndTabItem();
             }
+
         ImGui::EndTabBar();
         }
+
         ImGui::EndChild();
     }
+
     ImGui::SameLine();
     ImGui::BeginChild("Triggerbot", ImVec2(0, 260), true); {
         ImGui::Text("Triggerbot");
@@ -178,6 +179,7 @@ void Menu::drawLegitTab() {
 
         ImGui::EndChild();
     }
+
     ImGui::BeginChild("Backtrack", ImVec2(0, 260), true); {
         ImGui::Text("Backtrack");
         ImGui::Separator();

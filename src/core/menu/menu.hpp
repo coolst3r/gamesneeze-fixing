@@ -6,7 +6,7 @@
 #include <string>
 
 namespace Menu {
-    inline bool open = true;
+    inline bool open = false;
     inline bool initialised = false;
     inline int tabSelected = 0;
 

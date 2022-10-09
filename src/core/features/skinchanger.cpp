@@ -4,7 +4,8 @@
 void Features::SkinChanger::frameStageNotify(FrameStage frame) {
     if (frame == FRAME_NET_UPDATE_POSTDATAUPDATE_START && Globals::localPlayer && Interfaces::engine->IsInGame() && Globals::localPlayer->health() > 0) {
         // TODO: get all weapons, not just active weapon
-        Weapon* weapon = (Weapon*) Interfaces::entityList->GetClientEntity((uintptr_t)Globals::localPlayer->activeWeapon() & 0xFFF); // GetClientEntityFromHandle is being gay
+        auto weapon = Interfaces::entityList->activeWeapon(Globals::localPlayer);
+        
         try {
             if (weapon && weapon->itemIndex() != ItemIndex::INVALID) {
                 const char* weaponName = itemIndexMap.at(weapon->itemIndex());

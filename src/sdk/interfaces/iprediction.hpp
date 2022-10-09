@@ -59,13 +59,13 @@ public:
 	Split_t			Split[1];						// 0x0018
 	
 public:
-	void SetupMove(Entity* player, CUserCmd* cmd, IMoveHelper* helper, CMoveData* move) {
-		typedef void (*Fn)(void* , Entity* , CUserCmd* , IMoveHelper* , CMoveData* );
+	void SetupMove(Entity* player, Command* cmd, IMoveHelper* helper, CMoveData* move) {
+		typedef void (*Fn)(void* , Entity* , Command* , IMoveHelper* , CMoveData* );
 		return getVirtualFunc<Fn>(this, 21)(this, player, cmd, helper, move);
 	}
 
-	void FinishMove(Entity* player, CUserCmd* cmd, CMoveData* move) {
-		typedef void (*Fn)(void*, Entity*, CUserCmd*, CMoveData*);
+	void FinishMove(Entity* player, Command* cmd, CMoveData* move) {
+		typedef void (*Fn)(void*, Entity*, Command*, CMoveData*);
 		return getVirtualFunc<Fn>(this, 22)(this, player, cmd, move);
 	}
 };

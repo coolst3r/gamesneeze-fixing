@@ -1,3 +1,5 @@
+#pragma once
+
 #pragma GCC diagnostic ignored "-Wunused-value"
 #pragma GCC diagnostic ignored "-Wreturn-type"
 #pragma GCC diagnostic ignored "-Wdeprecated-copy"
@@ -5,28 +7,84 @@
 #include <math.h>
 #include <stdlib.h>
 
-#pragma once
+namespace sdk {
 
-#define CHECK_VALID( _v ) 0
-#define Assert( _exp ) ((void)0)
+template<class T> class numeric_consts;
 
-#define FastSqrt(x)			(sqrt)(x)
+template<> class numeric_consts<double> {
+public:
+	static constexpr double degree() noexcept {
+		return pi() / 180.0;
+	}
 
-#define M_PI		3.14159265358979323846	// matches value in gcc v2 math.h
+	static constexpr double pi() noexcept {
+		/// Matches GCC's v2 definition.
+		return 3.14159265358979323846;
+	}
 
-#define M_PI_F		((float)(M_PI))	// Shouldn't collide with anything.
+	static constexpr double phi() noexcept {
+		return 1.61803398874989484820; 
+	}
 
-#define M_PHI		1.61803398874989484820 // golden ratio
+	static constexpr double radian() noexcept {
+		return 180.0 / pi();
+	}
+};
 
-// NJS: Inlined to prevent floats from being autopromoted to doubles, as with the old system.
-#ifndef RAD2DEG
-#define RAD2DEG( x  )  ( (float)(x) * (float)(180.f / M_PI_F) )
-#endif
+template<> class numeric_consts<float> {
+public:
+	static constexpr float degree() noexcept {
+		return pi() / 180.0;
+	}
 
-#ifndef DEG2RAD
-#define DEG2RAD( x  )  ( (float)(x) * (float)(M_PI_F / 180.f) )
-#endif
+	static constexpr float pi() noexcept {
+		return static_cast<float>(numeric_consts<double>::pi());
+	}
 
+	static constexpr float phi() noexcept {
+		return static_cast<float>(numeric_consts<double>::phi());
+	}
+
+	static constexpr float radian() noexcept {
+		return 180.0 / pi();
+	}
+};
+
+template<> class numeric_consts<int> {
+public:
+	static constexpr int random_max() noexcept {
+		// VALVE_RAND_MAX.
+		return 0x7FFF;
+	}
+};
+
+template<class T>
+constexpr T to_degrees(T radians) noexcept {
+	return radians * numeric_consts<T>::radian();
+}
+
+template<class T>
+constexpr T to_radians(T degrees) noexcept {
+	return degrees * numeric_consts<T>::degree();
+}
+
+constexpr double sin(double radians) noexcept {
+	return sin(radians);
+}
+
+constexpr float sin(float radians) noexcept {
+	return sinf(radians);
+}
+
+constexpr double cos(double radians) noexcept {
+	return cos(radians);
+}
+
+constexpr float cos(float radians) noexcept {
+	return cosf(radians);
+}
+
+}
 // MOVEMENT INFO
 enum
 {
@@ -38,31 +96,42 @@ enum
 // decls for aligning data
 
 #define DECL_ALIGN(x) __attribute__((aligned(x)))
-
-
 #define ALIGN16 DECL_ALIGN(16)
-#define VALVE_RAND_MAX 0x7fff
 #define VectorExpand(v) (v).x, (v).y, (v).z
 
-struct matrix3x4_t
-{
-	matrix3x4_t() {}
-	matrix3x4_t(
-		float m00, float m01, float m02, float m03,
-		float m10, float m11, float m12, float m13,
-		float m20, float m21, float m22, float m23)
-	{
-		m_flMatVal[0][0] = m00;	m_flMatVal[0][1] = m01; m_flMatVal[0][2] = m02; m_flMatVal[0][3] = m03;
-		m_flMatVal[1][0] = m10;	m_flMatVal[1][1] = m11; m_flMatVal[1][2] = m12; m_flMatVal[1][3] = m13;
-		m_flMatVal[2][0] = m20;	m_flMatVal[2][1] = m21; m_flMatVal[2][2] = m22; m_flMatVal[2][3] = m23;
+class Matrix3x4 {
+public:
+	float values[3][4];
+
+	constexpr Matrix3x4() noexcept {}
+	constexpr Matrix3x4(
+		float x0y0, float x0y1, float x0y2, float x0y3,
+		float x1y0, float x1y1, float x1y2, float x1y3,
+		float x2y0, float x2y1, float x2y2, float x2y3
+	) noexcept {
+		values[0][0] = x0y0;
+		values[0][1] = x0y1;
+		values[0][2] = x0y2;
+		values[0][3] = x0y3;
+
+		values[1][0] = x1y0;
+		values[1][1] = x1y1;
+		values[1][2] = x1y2;
+		values[1][3] = x1y3;
+
+		values[2][0] = x2y0;
+		values[2][1] = x2y1;
+		values[2][2] = x2y2;
+		values[2][3] = x2y3;
 	}
 
-	float *operator[](int i)				{ Assert((i >= 0) && (i < 3)); return m_flMatVal[i]; }
-	const float *operator[](int i) const	{ Assert((i >= 0) && (i < 3)); return m_flMatVal[i]; }
-	float *Base()							{ return &m_flMatVal[0][0]; }
-	const float *Base() const				{ return &m_flMatVal[0][0]; }
+	constexpr float *operator[](int index) noexcept {
+		return values[index];
+	}
 
-	float m_flMatVal[3][4];
+	constexpr float *base() {
+		return &values[0][0];
+	}
 };
 
 class VMatrix
@@ -151,7 +220,6 @@ public:
 	inline float	Length() const;
 	inline float LengthSqr(void) const
 	{
-		CHECK_VALID(*this);
 		return (x*x + y*y + z*z);
 	}
 	bool IsZero(float tolerance = 0.01f) const
@@ -173,6 +241,7 @@ public:
 	Vector	operator-(const Vector& v) const;
 	Vector	operator*(const Vector& v) const;
 	Vector	operator/(const Vector& v) const;
+	Vector	operator+(float fl) const;
 	Vector	operator*(float fl) const;
 	Vector	operator/(float fl) const;
 	// Base address...
@@ -184,13 +253,11 @@ public:
 inline void Vector::Init(float ix, float iy, float iz)
 {
 	x = ix; y = iy; z = iz;
-	CHECK_VALID(*this);
 }
 //===============================================
 inline Vector::Vector(float X, float Y, float Z)
 {
 	x = X; y = Y; z = Z;
-	CHECK_VALID(*this);
 }
 //===============================================
 inline Vector::Vector(void){ Zero(); }
@@ -207,40 +274,32 @@ inline void VectorClear(Vector& a)
 //===============================================
 inline Vector& Vector::operator=(const Vector &vOther)
 {
-	CHECK_VALID(vOther);
 	x = vOther.x; y = vOther.y; z = vOther.z;
 	return *this;
 }
 //===============================================
 inline float& Vector::operator[](int i)
 {
-	Assert((i >= 0) && (i < 3));
 	return ((float*)this)[i];
 }
 //===============================================
 inline float Vector::operator[](int i) const
 {
-	Assert((i >= 0) && (i < 3));
 	return ((float*)this)[i];
 }
 //===============================================
 inline bool Vector::operator==(const Vector& src) const
 {
-	CHECK_VALID(src);
-	CHECK_VALID(*this);
 	return (src.x == x) && (src.y == y) && (src.z == z);
 }
 //===============================================
 inline bool Vector::operator!=(const Vector& src) const
 {
-	CHECK_VALID(src);
-	CHECK_VALID(*this);
 	return (src.x != x) || (src.y != y) || (src.z != z);
 }
 //===============================================
 inline void VectorCopy(const Vector& src, Vector& dst)
 {
-	CHECK_VALID(src);
 	dst.x = src.x;
 	dst.y = src.y;
 	dst.z = src.z;
@@ -248,16 +307,12 @@ inline void VectorCopy(const Vector& src, Vector& dst)
 //===============================================
 inline  Vector& Vector::operator+=(const Vector& v)
 {
-	CHECK_VALID(*this);
-	CHECK_VALID(v);
 	x += v.x; y += v.y; z += v.z;
 	return *this;
 }
 //===============================================
 inline  Vector& Vector::operator-=(const Vector& v)
 {
-	CHECK_VALID(*this);
-	CHECK_VALID(v);
 	x -= v.x; y -= v.y; z -= v.z;
 	return *this;
 }
@@ -267,17 +322,14 @@ inline  Vector& Vector::operator*=(float fl)
 	x *= fl;
 	y *= fl;
 	z *= fl;
-	CHECK_VALID(*this);
 	return *this;
 }
 //===============================================
 inline  Vector& Vector::operator*=(const Vector& v)
 {
-	CHECK_VALID(v);
 	x *= v.x;
 	y *= v.y;
 	z *= v.z;
-	CHECK_VALID(*this);
 	return *this;
 }
 //===============================================
@@ -286,7 +338,6 @@ inline Vector&	Vector::operator+=(float fl)
 	x += fl;
 	y += fl;
 	z += fl;
-	CHECK_VALID(*this);
 	return *this;
 }
 //===============================================
@@ -295,36 +346,28 @@ inline Vector&	Vector::operator-=(float fl)
 	x -= fl;
 	y -= fl;
 	z -= fl;
-	CHECK_VALID(*this);
 	return *this;
 }
 //===============================================
 inline  Vector& Vector::operator/=(float fl)
 {
-	Assert(fl != 0.0f);
 	float oofl = 1.0f / fl;
 	x *= oofl;
 	y *= oofl;
 	z *= oofl;
-	CHECK_VALID(*this);
 	return *this;
 }
 //===============================================
 inline  Vector& Vector::operator/=(const Vector& v)
 {
-	CHECK_VALID(v);
-	Assert(v.x != 0.0f && v.y != 0.0f && v.z != 0.0f);
 	x /= v.x;
 	y /= v.y;
 	z /= v.z;
-	CHECK_VALID(*this);
 	return *this;
 }
 //===============================================
 inline float Vector::Length(void) const
 {
-	CHECK_VALID(*this);
-
 	float root = 0.0f;
 
 	float sqsr = x*x + y*y + z*z;
@@ -336,10 +379,7 @@ inline float Vector::Length(void) const
 //===============================================
 inline float Vector::Length2D(void) const
 {
-	CHECK_VALID(*this);
-
 	float root = 0.0f;
-
 	float sqst = x*x + y*y;
 
 	root = sqrt(sqst);
@@ -410,7 +450,6 @@ inline float Vector::NormalizeInPlace()
 //===============================================
 inline float VectorNormalize(Vector& v)
 {
-	Assert(v.IsValid());
 	float l = v.Length();
 	if (l != 0.0f)
 	{
@@ -446,6 +485,15 @@ inline Vector Vector::operator-(const Vector& v) const
 	res.x = x - v.x;
 	res.y = y - v.y;
 	res.z = z - v.z;
+	return res;
+}
+//===============================================
+inline  Vector Vector::operator+(float fl) const
+{
+	Vector res;
+	res.x = x + fl;
+	res.y = y + fl;
+	res.z = z + fl;
 	return res;
 }
 //===============================================
@@ -497,15 +545,12 @@ inline float Vector::Dot(const Vector& vOther) const
 
 inline float VectorLength(const Vector& v)
 {
-	CHECK_VALID(v);
-	return (float)FastSqrt(v.x*v.x + v.y*v.y + v.z*v.z);
+	return (float)sqrt(v.x*v.x + v.y*v.y + v.z*v.z);
 }
 
 //VECTOR SUBTRAC
 inline void VectorSubtract(const Vector& a, const Vector& b, Vector& c)
 {
-	CHECK_VALID(a);
-	CHECK_VALID(b);
 	c.x = a.x - b.x;
 	c.y = a.y - b.y;
 	c.z = a.z - b.z;
@@ -514,8 +559,6 @@ inline void VectorSubtract(const Vector& a, const Vector& b, Vector& c)
 //VECTORADD
 inline void VectorAdd(const Vector& a, const Vector& b, Vector& c)
 {
-	CHECK_VALID(a);
-	CHECK_VALID(b);
 	c.x = a.x + b.x;
 	c.y = a.y + b.y;
 	c.z = a.z + b.z;
@@ -786,14 +829,11 @@ inline Vector2D::Vector2D(void)
 inline Vector2D::Vector2D(float X, float Y)
 {
 	x = X; y = Y;
-	Assert(IsValid());
 }
 
 inline Vector2D::Vector2D(const float *pFloat)
 {
-	Assert(pFloat);
 	x = pFloat[0]; y = pFloat[1];
-	Assert(IsValid());
 }
 
 
@@ -803,7 +843,6 @@ inline Vector2D::Vector2D(const float *pFloat)
 
 inline Vector2D::Vector2D(const Vector2D &vOther)
 {
-	Assert(vOther.IsValid());
 	x = vOther.x; y = vOther.y;
 }
 
@@ -814,13 +853,12 @@ inline Vector2D::Vector2D(const Vector2D &vOther)
 inline void Vector2D::Init(float ix, float iy)
 {
 	x = ix; y = iy;
-	Assert(IsValid());
 }
 
 inline void Vector2D::Random(float minVal, float maxVal)
 {
-	x = minVal + ((float)rand() / VALVE_RAND_MAX) * (maxVal - minVal);
-	y = minVal + ((float)rand() / VALVE_RAND_MAX) * (maxVal - minVal);
+	x = minVal + ((float)rand() / sdk::numeric_consts<int>::random_max()) * (maxVal - minVal);
+	y = minVal + ((float)rand() / sdk::numeric_consts<int>::random_max()) * (maxVal - minVal);
 }
 
 inline void Vector2DClear(Vector2D& a)
@@ -834,7 +872,6 @@ inline void Vector2DClear(Vector2D& a)
 
 inline Vector2D& Vector2D::operator=(const Vector2D &vOther)
 {
-	Assert(vOther.IsValid());
 	x = vOther.x; y = vOther.y;
 	return *this;
 }
@@ -845,13 +882,11 @@ inline Vector2D& Vector2D::operator=(const Vector2D &vOther)
 
 inline float& Vector2D::operator[](int i)
 {
-	Assert((i >= 0) && (i < 2));
 	return ((float*)this)[i];
 }
 
 inline float Vector2D::operator[](int i) const
 {
-	Assert((i >= 0) && (i < 2));
 	return ((float*)this)[i];
 }
 
@@ -884,13 +919,11 @@ inline bool Vector2D::IsValid() const
 
 inline bool Vector2D::operator==(const Vector2D& src) const
 {
-	Assert(src.IsValid() && IsValid());
 	return (src.x == x) && (src.y == y);
 }
 
 inline bool Vector2D::operator!=(const Vector2D& src) const
 {
-	Assert(src.IsValid() && IsValid());
 	return (src.x != x) || (src.y != y);
 }
 
@@ -901,15 +934,12 @@ inline bool Vector2D::operator!=(const Vector2D& src) const
 
 inline void Vector2DCopy(const Vector2D& src, Vector2D& dst)
 {
-	Assert(src.IsValid());
 	dst.x = src.x;
 	dst.y = src.y;
 }
 
 inline void	Vector2D::CopyToArray(float* rgfl) const
 {
-	Assert(IsValid());
-	Assert(rgfl);
 	rgfl[0] = x; rgfl[1] = y;
 }
 
@@ -919,20 +949,17 @@ inline void	Vector2D::CopyToArray(float* rgfl) const
 
 inline void Vector2D::Negate()
 {
-	Assert(IsValid());
 	x = -x; y = -y;
 }
 
 inline Vector2D& Vector2D::operator+=(const Vector2D& v)
 {
-	Assert(IsValid() && v.IsValid());
 	x += v.x; y += v.y;
 	return *this;
 }
 
 inline Vector2D& Vector2D::operator-=(const Vector2D& v)
 {
-	Assert(IsValid() && v.IsValid());
 	x -= v.x; y -= v.y;
 	return *this;
 }
@@ -941,7 +968,6 @@ inline Vector2D& Vector2D::operator*=(float fl)
 {
 	x *= fl;
 	y *= fl;
-	Assert(IsValid());
 	return *this;
 }
 
@@ -949,53 +975,44 @@ inline Vector2D& Vector2D::operator*=(const Vector2D& v)
 {
 	x *= v.x;
 	y *= v.y;
-	Assert(IsValid());
 	return *this;
 }
 
 inline Vector2D& Vector2D::operator/=(float fl)
 {
-	Assert(fl != 0.0f);
 	float oofl = 1.0f / fl;
 	x *= oofl;
 	y *= oofl;
-	Assert(IsValid());
 	return *this;
 }
 
 inline Vector2D& Vector2D::operator/=(const Vector2D& v)
 {
-	Assert(v.x != 0.0f && v.y != 0.0f);
 	x /= v.x;
 	y /= v.y;
-	Assert(IsValid());
 	return *this;
 }
 
 inline void Vector2DAdd(const Vector2D& a, const Vector2D& b, Vector2D& c)
 {
-	Assert(a.IsValid() && b.IsValid());
 	c.x = a.x + b.x;
 	c.y = a.y + b.y;
 }
 
 inline void Vector2DSubtract(const Vector2D& a, const Vector2D& b, Vector2D& c)
 {
-	Assert(a.IsValid() && b.IsValid());
 	c.x = a.x - b.x;
 	c.y = a.y - b.y;
 }
 
 inline void Vector2DMultiply(const Vector2D& a, float b, Vector2D& c)
 {
-	Assert(a.IsValid() && IsFinite(b));
 	c.x = a.x * b;
 	c.y = a.y * b;
 }
 
 inline void Vector2DMultiply(const Vector2D& a, const Vector2D& b, Vector2D& c)
 {
-	Assert(a.IsValid() && b.IsValid());
 	c.x = a.x * b.x;
 	c.y = a.y * b.y;
 }
@@ -1003,8 +1020,6 @@ inline void Vector2DMultiply(const Vector2D& a, const Vector2D& b, Vector2D& c)
 
 inline void Vector2DDivide(const Vector2D& a, float b, Vector2D& c)
 {
-	Assert(a.IsValid());
-	Assert(b != 0.0f);
 	float oob = 1.0f / b;
 	c.x = a.x * oob;
 	c.y = a.y * oob;
@@ -1012,15 +1027,12 @@ inline void Vector2DDivide(const Vector2D& a, float b, Vector2D& c)
 
 inline void Vector2DDivide(const Vector2D& a, const Vector2D& b, Vector2D& c)
 {
-	Assert(a.IsValid());
-	Assert((b.x != 0.0f) && (b.y != 0.0f));
 	c.x = a.x / b.x;
 	c.y = a.y / b.y;
 }
 
 inline void Vector2DMA(const Vector2D& start, float s, const Vector2D& dir, Vector2D& result)
 {
-	Assert(start.IsValid() && IsFinite(s) && dir.IsValid());
 	result.x = start.x + s*dir.x;
 	result.y = start.y + s*dir.y;
 }
@@ -1044,7 +1056,6 @@ inline void Vector2DLerp(const Vector2D& src1, const Vector2D& src2, float t, Ve
 //-----------------------------------------------------------------------------
 inline float DotProduct2D(const Vector2D& a, const Vector2D& b)
 {
-	Assert(a.IsValid() && b.IsValid());
 	return(a.x*b.x + a.y*b.y);
 }
 
@@ -1060,13 +1071,11 @@ inline float Vector2D::Dot(const Vector2D& vOther) const
 //-----------------------------------------------------------------------------
 inline float Vector2DLength(const Vector2D& v)
 {
-	Assert(v.IsValid());
-	return (float)FastSqrt(v.x*v.x + v.y*v.y);
+	return (float)sqrt(v.x*v.x + v.y*v.y);
 }
 
 inline float Vector2D::LengthSqr(void) const
 {
-	Assert(IsValid());
 	return (x*x + y*y);
 }
 
@@ -1110,7 +1119,6 @@ inline void Vector2DMax(const Vector2D &a, const Vector2D &b, Vector2D &result)
 //-----------------------------------------------------------------------------
 inline float Vector2DNormalize(Vector2D& v)
 {
-	Assert(v.IsValid());
 	float l = v.Length();
 	if (l != 0.0f)
 	{
@@ -1156,7 +1164,7 @@ inline void ComputeClosestPoint2D(const Vector2D& vecStart, float flMaxDist, con
 	}
 	else
 	{
-		vecDelta /= FastSqrt(flDistSqr);
+		vecDelta /= sqrt(flDistSqr);
 		Vector2DMA(vecStart, flMaxDist, vecDelta, *pResult);
 	}
 }
@@ -1251,13 +1259,12 @@ public:
 	// Members
 	float x, y, z;
 
-	// Construction/destruction
-	QAngle(void);
+	QAngle() : x{0.0f}, y{0.0f}, z{0.0f} {}
 	QAngle(float X, float Y, float Z);
-	//      QAngle(RadianEuler const &angles);      // evil auto type promotion!!!
+	//	  QAngle(RadianEuler const &angles);	  // evil auto type promotion!!!
 
 	// Allow pass-by-value
-	operator QAngleByValue &()              { return *((QAngleByValue *)(this)); }
+	operator QAngleByValue &()			  { return *((QAngleByValue *)(this)); }
 	operator const QAngleByValue &() const  { return *((const QAngleByValue *)(this)); }
 
 	// Initialization
@@ -1322,23 +1329,9 @@ private:
 #endif
 };
 
-//-----------------------------------------------------------------------------
-// constructors
-//-----------------------------------------------------------------------------
-inline QAngle::QAngle(void)
-{
-#ifdef _DEBUG
-#ifdef VECTOR_PARANOIA
-	// Initialize to NAN to catch errors
-	x = y = z = VEC_T_NAN;
-#endif
-#endif
-}
-
 inline QAngle::QAngle(float X, float Y, float Z)
 {
 	x = X; y = Y; z = Z;
-	CHECK_VALID(*this);
 }
 
 //-----------------------------------------------------------------------------
@@ -1347,7 +1340,6 @@ inline QAngle::QAngle(float X, float Y, float Z)
 inline void QAngle::Init(float ix, float iy, float iz)
 {
 	x = ix; y = iy; z = iz;
-	CHECK_VALID(*this);
 }
 
 inline void QAngle::Random(float minVal, float maxVal)
@@ -1355,7 +1347,6 @@ inline void QAngle::Random(float minVal, float maxVal)
 	x = minVal + ((float)rand() / (float)RAND_MAX) * (maxVal - minVal);
 	y = minVal + ((float)rand() / (float)RAND_MAX) * (maxVal - minVal);
 	z = minVal + ((float)rand() / (float)RAND_MAX) * (maxVal - minVal);
-	CHECK_VALID(*this);
 }
 
 //-----------------------------------------------------------------------------
@@ -1363,7 +1354,6 @@ inline void QAngle::Random(float minVal, float maxVal)
 //-----------------------------------------------------------------------------
 inline QAngle& QAngle::operator=(const QAngle &vOther)
 {
-	CHECK_VALID(vOther);
 	x = vOther.x; y = vOther.y; z = vOther.z;
 	return *this;
 }
@@ -1373,15 +1363,11 @@ inline QAngle& QAngle::operator=(const QAngle &vOther)
 //-----------------------------------------------------------------------------
 inline bool QAngle::operator==(const QAngle& src) const
 {
-	CHECK_VALID(src);
-	CHECK_VALID(*this);
 	return (src.x == x) && (src.y == y) && (src.z == z);
 }
 
 inline bool QAngle::operator!=(const QAngle& src) const
 {
-	CHECK_VALID(src);
-	CHECK_VALID(*this);
 	return (src.x != x) || (src.y != y) || (src.z != z);
 }
 
@@ -1390,16 +1376,12 @@ inline bool QAngle::operator!=(const QAngle& src) const
 //-----------------------------------------------------------------------------
 inline QAngle& QAngle::operator+=(const QAngle& v)
 {
-	CHECK_VALID(*this);
-	CHECK_VALID(v);
 	x += v.x; y += v.y; z += v.z;
 	return *this;
 }
 
 inline QAngle& QAngle::operator-=(const QAngle& v)
 {
-	CHECK_VALID(*this);
-	CHECK_VALID(v);
 	x -= v.x; y -= v.y; z -= v.z;
 	return *this;
 }
@@ -1409,18 +1391,15 @@ inline QAngle& QAngle::operator*=(float fl)
 	x *= fl;
 	y *= fl;
 	z *= fl;
-	CHECK_VALID(*this);
 	return *this;
 }
 
 inline QAngle& QAngle::operator/=(float fl)
 {
-	Assert(fl != 0.0f);
 	float oofl = 1.0f / fl;
 	x *= oofl;
 	y *= oofl;
 	z *= oofl;
-	CHECK_VALID(*this);
 	return *this;
 }
 
@@ -1442,13 +1421,11 @@ inline float const* QAngle::Base() const
 //-----------------------------------------------------------------------------
 inline float& QAngle::operator[](int i)
 {
-	Assert((i >= 0) && (i < 3));
 	return ((float*)this)[i];
 }
 
 inline float QAngle::operator[](int i) const
 {
-	Assert((i >= 0) && (i < 3));
 	return ((float*)this)[i];
 }
 
@@ -1457,14 +1434,12 @@ inline float QAngle::operator[](int i) const
 //-----------------------------------------------------------------------------
 inline float QAngle::Length() const
 {
-	CHECK_VALID(*this);
-	return (float)FastSqrt(LengthSqr());
+	return (float)sqrt(LengthSqr());
 }
 
 
 inline float QAngle::LengthSqr() const
 {
-	CHECK_VALID(*this);
 	return x * x + y * y + z * z;
 }
 
@@ -1526,8 +1501,6 @@ inline QAngle operator*(float fl, const QAngle& v)
 //QANGLE SUBTRAC
 inline void QAngleSubtract(const QAngle& a, const QAngle& b, QAngle& c)
 {
-	CHECK_VALID(a);
-	CHECK_VALID(b);
 	c.x = a.x - b.x;
 	c.y = a.y - b.y;
 	c.z = a.z - b.z;
@@ -1536,8 +1509,6 @@ inline void QAngleSubtract(const QAngle& a, const QAngle& b, QAngle& c)
 //QANGLEADD
 inline void QAngleAdd(const QAngle& a, const QAngle& b, QAngle& c)
 {
-	CHECK_VALID(a);
-	CHECK_VALID(b);
 	c.x = a.x + b.x;
 	c.y = a.y + b.y;
 	c.z = a.z + b.z;
@@ -1558,8 +1529,8 @@ public:
 		z = Z;
 	}
 
-	inline RadianEuler(Quaternion const &q);    // evil auto type promotion!!!
-	inline RadianEuler(QAngle const &angles);    // evil auto type promotion!!!
+	inline RadianEuler(Quaternion const &q);	// evil auto type promotion!!!
+	inline RadianEuler(QAngle const &angles);	// evil auto type promotion!!!
 
 	// Initialization
 	inline void Init(float ix = 0.0f, float iy = 0.0f, float iz = 0.0f)
@@ -1594,8 +1565,8 @@ public:
 	float x, y, z;
 };
 
-class Quaternion                // same data-layout as engine's vec4_t,
-{                                //		which is a float[4]
+class Quaternion				// same data-layout as engine's vec4_t,
+{								//		which is a float[4]
 public:
 	inline Quaternion(void)
 	{}
@@ -1603,7 +1574,7 @@ public:
 	inline Quaternion(float ix, float iy, float iz, float iw) : x(ix), y(iy), z(iz), w(iw)
 	{}
 
-	inline Quaternion(RadianEuler const &angle);    // evil auto type promotion!!!
+	inline Quaternion(RadianEuler const &angle);	// evil auto type promotion!!!
 
 	inline void Init(float ix = 0.0f, float iy = 0.0f, float iz = 0.0f, float iw = 0.0f)
 	{

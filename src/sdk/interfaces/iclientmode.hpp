@@ -1,26 +1,24 @@
 #pragma once
 #include "../classes/vector.h"
 
-struct CUserCmd
-{
-	virtual ~CUserCmd() {};
-	int command_number;
-	int tick_count;
-	QAngle viewangles;
-	QAngle aimdirection;
-	float forwardmove;
-	float sidemove;
-	float upmove;
+struct Command {
+	void *vtable;
+
+	int commandNumber;
+	int tickCount;
+	QAngle viewAngle;
+	QAngle aimDirection;
+	QAngle move;
 	int buttons;
 	unsigned char impulse;
-	int weaponselect;
-	int weaponsubtype;
-	int random_seed;
-	short mousedx;
-	short mousedy;
-	bool hasbeenpredicted;
-	QAngle headangles;
-	Vector headoffset;
+	int weaponSelect;
+	int weaponSubtype;
+	int randomSeed;
+	short mouseX;
+	short mouseY;
+	bool hasBeenPredicted;
+	QAngle headAngle;
+	Vector headOffset;
 };
 
 struct ViewSetup {

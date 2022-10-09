@@ -14,6 +14,7 @@
 #include "ivmodelinfo.hpp"
 #include "ienginesound.hpp"
 #include "ienginetrace.hpp"
+#include "iphysicssurfaceprops.hpp"
 #include "iprediction.hpp"
 #include "input.hpp"
 #include "igameevent.hpp"
@@ -30,27 +31,29 @@ namespace Interfaces {
     bool init();
     bool unload();
 
-    inline IBaseClientDLL* client;
-    inline IVEngineClient* engine;
-    inline IPanel* panel;
-    inline IClientEntityList* entityList;
-    inline IEngineVGui* engineVgui;
-    inline IVModelRender* modelRender;
-    inline IVModelInfo* modelInfo;
-    inline IMaterialSystem* materialSystem;
-    inline IEngineSound* sound;
-    inline IEngineTrace* trace;
-    inline IGameMovement* movement;
-    inline IMoveHelper* moveHelper;
-    inline IPrediction* prediction;
-    inline IGameEventManager2* eventManager;
-    inline ICvar* convar;
+    inline IBaseClientDLL *client;
+    inline IVEngineClient *engine;
+    inline IPanel *panel;
+    inline IClientEntityList *entityList;
+    inline IEngineVGui *engineVgui;
+    inline IVModelRender *modelRender;
+    inline IVModelInfo *modelInfo;
+    inline IMaterialSystem *materialSystem;
+    inline IEngineSound *sound;
+    inline IEngineTrace *trace;
+    inline IGameMovement *movement;
+    inline IMoveHelper *moveHelper;
+    inline IPhysicsSurfaceProps *physics;
+    inline IPrediction *prediction;
+    inline IGameEventManager2 *eventManager;
+    inline ICvar *convar;
 
-    inline IClientMode* clientMode;
-    inline CGlobalVars* globals;
-    inline CInput* input;
-    inline PlayerResource** _playerResource;
-    inline ViewRenderBeams* renderBeams;
+    inline IClientMode *clientMode;
+    inline GlobalVars *globals;
+    inline CInput *input;
+    inline PlayerResource **_playerResource;
+    inline ViewRenderBeams *renderBeams;
+
 
     typedef void* (*InstantiateInterfaceFn)();
     // https://github.com/ValveSoftware/source-sdk-2013/blob/0d8dceea4310fde5706b3ce1c70609d72a38efdf/sp/src/public/tier1/interface.h#L72

@@ -1,7 +1,7 @@
 #pragma once
 #include "../netvars.hpp"
 
-#define TICKCOUNTWITHPING() (int)(Interfaces::globals->tickcount + ((float)playerResource->GetPing(Globals::localPlayer->index())/1000.f) / Interfaces::globals->interval_per_tick)
+#define TICKCOUNTWITHPING() (int)(Interfaces::globals->tickCount + ((float)playerResource->GetPing(Globals::localPlayer->index()) / 1000.0f) / Interfaces::globals->intervalPerTick)
 
 class PlayerResource {
 public:

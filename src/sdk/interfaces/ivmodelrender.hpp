@@ -8,7 +8,7 @@ struct DrawModelState_t {
 	void*			m_pStudioHdr;
 	void*			m_pStudioHWData;
 	void*		m_pRenderable;
-	const matrix3x4_t		*m_pModelToWorld;
+	const Matrix3x4		*m_pModelToWorld;
 	void*		m_decals;
 	int						m_drawFlags;
 	int						m_lod;
@@ -24,8 +24,8 @@ struct ModelRenderInfo_t {
 	char _padding[0x4];
 	void** pRenderable;
 	const model_t* pModel;
-	const matrix3x4_t* pModelToWorld;
-	const matrix3x4_t* pLightingOffset;
+	const Matrix3x4* pModelToWorld;
+	const Matrix3x4* pLightingOffset;
 	const Vector* pLightingOrigin;
 	int flags;
 	int entity_index;
@@ -49,8 +49,8 @@ public:
 		return getVirtualFunc<Fn>(this, 1)(this, mat, 0, 0);
 	}
 
-	void DrawModelExecute(void* ctx, const DrawModelState_t &state, const ModelRenderInfo_t &pInfo, matrix3x4_t *pCustomBoneToWorld = NULL) {
-		typedef void (*Fn)(void*, void* ctx, const DrawModelState_t &state, const ModelRenderInfo_t &pInfo, matrix3x4_t *pCustomBoneToWorld);
+	void DrawModelExecute(void* ctx, const DrawModelState_t &state, const ModelRenderInfo_t &pInfo, Matrix3x4 *pCustomBoneToWorld = NULL) {
+		typedef void (*Fn)(void*, void* ctx, const DrawModelState_t &state, const ModelRenderInfo_t &pInfo, Matrix3x4 *pCustomBoneToWorld);
 		return getVirtualFunc<Fn>(this, 21)(this, ctx, state, pInfo, pCustomBoneToWorld);
 	}
 };

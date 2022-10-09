@@ -2,7 +2,8 @@
 
 void Features::BulletTracers::event(IGameEvent* event) {
     if (strstr(event->GetName(), "bullet_impact") && CONFIGBOOL("Visuals>World>World>Bullet Tracers")) {
-        Player* attacker = (Player*)Interfaces::entityList->GetClientEntity(Interfaces::engine->GetPlayerForUserID(event->GetInt("userid")));
+        auto attacker = Interfaces::entityList->player(Interfaces::engine->GetPlayerForUserID(event->GetInt("userid")));
+
         if (attacker && !attacker->dormant()) {
             BeamInfo beamInfo;
 
@@ -40,8 +41,9 @@ void Features::BulletTracers::event(IGameEvent* event) {
 
             if (const auto beam = Interfaces::renderBeams->createBeamPoints(beamInfo)) {
                 constexpr auto FBEAM_FOREVER = 0x4000;
+
                 beam->flags &= ~FBEAM_FOREVER;
-                beam->die = Interfaces::globals->curtime + 2.f;
+                beam->die = Interfaces::globals->currentTime + 2.0f;
             }
         }
     }

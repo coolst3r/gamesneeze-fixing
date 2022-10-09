@@ -31,7 +31,7 @@ struct mstudiobone_t {
 	Vector				posscale;
 	Vector				rotscale;
 
-	matrix3x4_t			poseToBone;
+	Matrix3x4			poseToBone;
 	Quaternion			qAlignment;
 	int					flags;
 	int					proctype;
@@ -102,7 +102,6 @@ struct studiohdr_t {
 	int boneindex;
 	inline mstudiobone_t* pBone(int i) const
 	{
-		Assert(i >= 0 && i < numbones);
 		return (mstudiobone_t* )(((unsigned char*  ) this) + boneindex ) + i;
 	};
 

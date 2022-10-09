@@ -1,37 +1,29 @@
 #include "../../includes.hpp"
 #include "../../sdk/classes/keyvalues.hpp"
 #include "features.hpp"
+#include <array>
 #include <cstring>
 
-IMaterial* shadedMaterial;
-IMaterial* flatMaterial;
-IMaterial* pulseMaterial;
-IMaterial* energyBallMaterial;
-IMaterial* glowMaterial;
-IMaterial* plasticMaterial;
-IMaterial* darudeMaterial;
-IMaterial* oilMaterial;
+inline bool materialsInit;
+inline std::array<IMaterial *, 9> materials;
 
-IMaterial* createMaterial(const char* materialName, const char* materialType, const char* material) {
-	KeyValues* keyValues = new KeyValues(materialName);
+inline IMaterial *createMaterial(const char *materialName, const char *materialType, const char *material) {
+	auto keyValues = new KeyValues(materialName);
 
 	Offsets::initKeyValues(keyValues, materialType, 0, 0);
 	Offsets::loadFromBuffer(keyValues, materialName, material, nullptr, nullptr, nullptr);
 
-	return Interfaces::materialSystem->CreateMaterial(materialName, keyValues);
+	return Interfaces::materialSystem->createMaterial(materialName, keyValues);
 }
 
-void createMaterials() {
-    static bool init;
-    if (!init) {
-        shadedMaterial = Interfaces::materialSystem->FindMaterial("debug/debugambientcube", 0);
-        flatMaterial = Interfaces::materialSystem->FindMaterial("debug/debugdrawflat", 0);
-        pulseMaterial = Interfaces::materialSystem->FindMaterial("dev/screenhighlight_pulse", 0);
-        energyBallMaterial = Interfaces::materialSystem->FindMaterial("effects/energyball", 0);
-        plasticMaterial = Interfaces::materialSystem->FindMaterial("models/inventory_items/trophy_majors/gloss", 0);
-        darudeMaterial = Interfaces::materialSystem->FindMaterial("models/inventory_items/music_kit/darude_01/mp3_detail", 0);
+inline void createMaterials() {
+    if (!materialsInit) {
+        materials[0] = Interfaces::materialSystem->findMaterial("debug/debugambientcube");
+        materials[1] = Interfaces::materialSystem->findMaterial("debug/debugdrawflat");
+        materials[2] = Interfaces::materialSystem->findMaterial("dev/screenhighlight_pulse");
+        materials[3] = Interfaces::materialSystem->findMaterial("effects/energyball");
 
-        glowMaterial = createMaterial("glow", "VertexLitGeneric",
+        materials[4] = createMaterial("glow", "VertexLitGeneric",
         R"#("VertexLitGeneric" {
             "$additive" "1"
             "$envmap" "models/effects/cube_white"
@@ -41,7 +33,10 @@ void createMaterials() {
             "$alpha" "0.8"
         })#");
 
-        oilMaterial = createMaterial("pearlescent", "VertexLitGeneric",
+        materials[5] = Interfaces::materialSystem->findMaterial("models/inventory_items/trophy_majors/gloss");
+        materials[6] = Interfaces::materialSystem->findMaterial("models/inventory_items/music_kit/darude_01/mp3_detail");
+
+        materials[7] = createMaterial("pearlescent", "VertexLitGeneric",
         R"#("VertexLitGeneric"
         {
             "$basetexture" "vgui/white_additive"
@@ -55,152 +50,432 @@ void createMaterials() {
             "$pearlescent" "6"
         })#");
 
-        init = true;
+        materialsInit = true;
     }
 }
 
-void cham(void* thisptr, void* ctx, const DrawModelState_t &state, const ModelRenderInfo_t &pInfo, matrix3x4_t *pCustomBoneToWorld, ImColor color, int mat, bool ignoreZ, bool wireframe = false) {
-    static IMaterial* material;
-    switch(mat) {
-        case 0: Hooks::DrawModelExecute::original(thisptr, ctx, state, pInfo, pCustomBoneToWorld); return;
-        case 1: material = shadedMaterial;  break;
-        case 2: material = flatMaterial;  break;
-        case 3: material = pulseMaterial; break;
-        case 4: material = energyBallMaterial; break;
-        case 5: material = glowMaterial; break;
-        case 6: material = plasticMaterial; break;
-        case 7: material = darudeMaterial; break;
-        case 8: material = oilMaterial; break;
+inline void cham(
+    void *self,
+    void *ctx,
+    const DrawModelState_t &state,
+    const ModelRenderInfo_t &pInfo,
+    Matrix3x4 *bones,
+    ImColor color,
+    int materialIndex,
+    bool wireframe,
+    bool ignoreZ = false,
+    bool overlay = false
+) {
+    if ((materialIndex < 1 || materialIndex > 8)) {
+        if (!overlay) {
+            Hooks::DrawModelExecute::original(self, ctx, state, pInfo, bones);
+        }
+
+        return;
     }
-    material->SetMaterialVarFlag(MATERIAL_VAR_IGNOREZ, ignoreZ);
-    material->SetMaterialVarFlag(MATERIAL_VAR_WIREFRAME, wireframe);
-    material->AlphaModulate(color.Value.w);
-    material->ColorModulate(color.Value.x, color.Value.y, color.Value.z);
-    bool found;
-    IMaterialVar* var = material->FindVar("$envmaptint", &found);
-    if (found) {
-        var->SetVecValue(color.Value.x, color.Value.y, color.Value.z);
-    }
+
+    auto material = materials[materialIndex - 1];
+
+    material->ignoreZ(ignoreZ);
+    material->wireframe(wireframe);
+    material->setColor(color);
+
     Interfaces::modelRender->ForcedMaterialOverride(material);
-    Hooks::DrawModelExecute::original(thisptr, ctx, state, pInfo, pCustomBoneToWorld);
+    Hooks::DrawModelExecute::original(self, ctx, state, pInfo, bones);
     Interfaces::modelRender->ForcedMaterialOverride(0);
 }
 
-void chamPlayer(void* thisptr, void* ctx, const DrawModelState_t &state, const ModelRenderInfo_t &pInfo, matrix3x4_t *pCustomBoneToWorld) {
-    Player* p = (Player*)Interfaces::entityList->GetClientEntity(pInfo.entity_index);
-    if (Globals::localPlayer) {
-        if (p->health() > 0) {
-            if (p->isEnemy()) {
-                /* Ignorez Enemy */
-                if (CONFIGINT("Visuals>Players>Enemies>Chams>Occluded Material")) {
-                    cham(thisptr, ctx, state, pInfo, pCustomBoneToWorld, CONFIGCOL("Visuals>Players>Enemies>Chams>Occluded Color"), CONFIGINT("Visuals>Players>Enemies>Chams>Occluded Material"), true);
-                }
-                /* Visible Enemy */
-                cham(thisptr, ctx, state, pInfo, pCustomBoneToWorld, CONFIGCOL("Visuals>Players>Enemies>Chams>Visible Color"), CONFIGINT("Visuals>Players>Enemies>Chams>Visible Material"), false, CONFIGBOOL("Visuals>Players>Enemies>Chams>Visible Wireframe"));
-                /* Visible Enemy Overlay */
-                if (CONFIGINT("Visuals>Players>Enemies>Chams>Visible Overlay Material")) {
-                    cham(thisptr, ctx, state, pInfo, pCustomBoneToWorld, CONFIGCOL("Visuals>Players>Enemies>Chams>Visible Overlay Color"), CONFIGINT("Visuals>Players>Enemies>Chams>Visible Overlay Material"), false, CONFIGBOOL("Visuals>Players>Enemies>Chams>Visible Overlay Wireframe"));
-                }
+inline void cham(
+    void *self,
+    void *ctx,
+    const DrawModelState_t &state,
+    const ModelRenderInfo_t &pInfo,
+    Matrix3x4 *bones,
+    const char *colorName,
+    const char *materialName,
+    const char *wireframeName = nullptr,
+    bool ignoreZ = false,
+    bool overlay = false
+) {
+    cham(
+        /* self */ self,
+        /* ctx */ ctx,
+        /* state */ state,
+        /* pInfo */ pInfo,
+        /* bones */ bones,
+        /* color */ colorName == nullptr ? ImColor{0.0f, 0.0f, 0.0f, 1.0f} : CONFIGCOL(colorName),
+        /* materialIndex */ materialName == nullptr ? 0 : CONFIGINT(materialName),
+        /* wireframe */ wireframeName == nullptr ? false : CONFIGBOOL(materialName),
+        /* ignoreZ */ ignoreZ,
+        /* overlay */ overlay
+    );
+}
 
-                if (CONFIGBOOL("Legit>Backtrack>Backtrack") && !CONFIGBOOL("Rage>Enabled")) {
-                    if (Features::Backtrack::backtrackTicks.size() > 2) {
-                        if (CONFIGINT("Visuals>Players>Enemies>Chams>Backtrack Material")) {
-                            if (CONFIGBOOL("Visuals>Players>Enemies>Chams>Trail")) {
-                                for (Features::Backtrack::BackTrackTick tick : Features::Backtrack::backtrackTicks) {
-                                    if (tick.tickCount % 2 == 0) { // only draw every other tick to reduce lag
-                                        if (tick.players.find(p->index()) != tick.players.end()) {
-                                            if (abs((tick.players.at(p->index()).playerHeadPos - p->getBonePos(8)).Length()) > 2) {
-                                                cham(thisptr, ctx, state, pInfo, tick.players.at(p->index()).boneMatrix, CONFIGCOL("Visuals>Players>Enemies>Chams>Backtrack Color"), CONFIGINT("Visuals>Players>Enemies>Chams>Backtrack Material"), false);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            else {
-                                Features::Backtrack::BackTrackTick tick = Features::Backtrack::backtrackTicks.at(Features::Backtrack::backtrackTicks.size()-1);
-                                if (tick.players.find(p->index()) != tick.players.end()) {
-                                    if (abs((tick.players.at(p->index()).playerHeadPos - p->getBonePos(8)).Length()) > 2) {
-                                        cham(thisptr, ctx, state, pInfo, tick.players.at(p->index()).boneMatrix, CONFIGCOL("Visuals>Players>Enemies>Chams>Backtrack Color"), CONFIGINT("Visuals>Players>Enemies>Chams>Backtrack Material"), false);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            else {
-                /* Ignorez Teammate */
-                if (CONFIGINT("Visuals>Players>Teammates>Chams>Occluded Material")) {
-                    cham(thisptr, ctx, state, pInfo, pCustomBoneToWorld, CONFIGCOL("Visuals>Players>Teammates>Chams>Occluded Color"), CONFIGINT("Visuals>Players>Teammates>Chams>Occluded Material"), true);
-                }
-                /* Visible Teammate */
-                cham(thisptr, ctx, state, pInfo, pCustomBoneToWorld, CONFIGCOL("Visuals>Players>Teammates>Chams>Visible Color"), CONFIGINT("Visuals>Players>Teammates>Chams>Visible Material"), false, CONFIGBOOL("Visuals>Players>Teammates>Chams>Visible Wireframe"));
-                /* Visible Teammate Overlay */
-                if (CONFIGINT("Visuals>Players>Teammates>Chams>Visible Overlay Material")) {
-                    cham(thisptr, ctx, state, pInfo, pCustomBoneToWorld, CONFIGCOL("Visuals>Players>Teammates>Chams>Visible Overlay Color"), CONFIGINT("Visuals>Players>Teammates>Chams>Visible Overlay Material"), false, CONFIGBOOL("Visuals>Players>Teammates>Chams>Visible Overlay Wireframe"));
-                }
-            }
-        }
-        else {
-            Hooks::DrawModelExecute::original(thisptr, ctx, state, pInfo, pCustomBoneToWorld);
-        }
+inline void chamPlayerLayer(
+    void *self,
+    void *ctx,
+    const DrawModelState_t &state,
+    const ModelRenderInfo_t &pInfo,
+    Matrix3x4 *bones,
+    const char *colorName,
+    const char *materialName,
+    const char *wireframeName,
+    const char *occludedColorName,
+    const char *occludedMaterialName,
+    const char *overlayColorName,
+    const char *overlayMaterialName,
+    const char *overlayWireframeName
+) {
+    // ignorez player
+    cham(
+        /* self */ self,
+        /* ctx */ ctx,
+        /* state */ state,
+        /* pInfo */ pInfo,
+        /* bones */ bones,
+        /* colorName */ occludedColorName,
+        /* materialName */ occludedMaterialName,
+        /* wireframeName */ nullptr,
+        /* ignoreZ */ true,
+        /* overlay */ true
+    );
+
+    // visible player
+    cham(
+        /* self */ self,
+        /* ctx */ ctx,
+        /* state */ state,
+        /* pInfo */ pInfo,
+        /* bones */ bones,
+        /* colorName */ colorName,
+        /* materialName */ materialName,
+        /* wireframeName */ wireframeName
+    );
+
+    // visible player overlay
+    cham(
+        /* self */ self,
+        /* ctx */ ctx,
+        /* state */ state,
+        /* pInfo */ pInfo,
+        /* bones */ bones,
+        /* colorName */ overlayColorName,
+        /* materialName */ overlayMaterialName,
+        /* wireframeName */ overlayWireframeName,
+        /* ignoreZ */ false,
+        /* overlay */ true
+    );
+}
+
+inline void chamPlayer(
+    void *self,
+    void *ctx,
+    const DrawModelState_t &state,
+    const ModelRenderInfo_t &pInfo,
+    Matrix3x4 *bones,
+    Player *player,
+    const char *colorName,
+    const char *materialName,
+    const char *wireframeName,
+    const char *occludedColorName,
+    const char *occludedMaterialName,
+    const char *overlayColorName,
+    const char *overlayMaterialName,
+    const char *overlayWireframeName,
+    const char *targetColorName,
+    const char *targetMaterialName,
+    const char *ragdollColorName,
+    const char *ragdollMaterialName
+) {
+    if (player->health() == 0) {
+        cham(
+            /* self */ self,
+            /* ctx */ ctx,
+            /* state */ state,
+            /* pInfo */ pInfo,
+            /* bones */ bones,
+            /* colorName */ ragdollColorName,
+            /* materialName */ ragdollMaterialName
+        );
+
+        return;
+    }
+
+    auto isTarget = false; //player == Features::RageBot::target;
+
+    if (targetColorName != nullptr && targetMaterialName != nullptr && isTarget) {
+        chamPlayerLayer(
+            /* self */ self,
+            /* ctx */ ctx,
+            /* state */ state,
+            /* pinfo */ pInfo,
+            /* bones */ bones,
+    	    /* colorName */ targetColorName,
+    	    /* materialName */ targetMaterialName,
+    	    /* wireframeName */ nullptr,
+            /* occludedColorName */ targetColorName,
+            /* occludedMaterialName */ targetMaterialName,
+            /* overlayColorName */ targetColorName,
+            /* overlayMaterialName */ targetMaterialName,
+    	    /* overlayWireframeName */ nullptr
+        );
+    } else {
+        chamPlayerLayer(
+            /* self */ self,
+            /* ctx */ ctx,
+            /* state */ state,
+            /* pinfo */ pInfo,
+            /* bones */ bones,
+    	    /* colorName */ colorName,
+    	    /* materialName */ materialName,
+    	    /* wireframeName */ wireframeName,
+            /* occludedColorName */ occludedColorName,
+            /* occludedMaterialName */ occludedMaterialName,
+            /* overlayColorName */ overlayColorName,
+            /* overlayMaterialName */ overlayMaterialName,
+    	    /* overlayWireframeName */ overlayWireframeName
+        );
     }
 }
 
-void chamArms(void* thisptr, void* ctx, const DrawModelState_t &state, const ModelRenderInfo_t &pInfo, matrix3x4_t *pCustomBoneToWorld) {
-    cham(thisptr, ctx, state, pInfo, pCustomBoneToWorld, CONFIGCOL("Visuals>Players>LocalPlayer>Arms Color"), CONFIGINT("Visuals>Players>LocalPlayer>Arms Material"), false, CONFIGBOOL("Visuals>Players>LocalPlayer>Arms Wireframe"));
-    /* Arms Overlay */
-    if (CONFIGINT("Visuals>Players>LocalPlayer>Arms Overlay Material")) {
-        cham(thisptr, ctx, state, pInfo, pCustomBoneToWorld, CONFIGCOL("Visuals>Players>LocalPlayer>Arms Overlay Color"), CONFIGINT("Visuals>Players>LocalPlayer>Arms Overlay Material"), false, CONFIGBOOL("Visuals>Players>LocalPlayer>Arms Overlay Wireframe"));
+void chamEnemy(
+    void *self,
+    void *ctx,
+    const DrawModelState_t &state,
+    const ModelRenderInfo_t &pInfo,
+    Matrix3x4 *bones,
+    Player *player
+) {
+    chamPlayer(
+        /* self */ self,
+        /* ctx */ ctx,
+        /* state */ state,
+        /* pInfo */ pInfo,
+        /* bones */ bones,
+        /* player */ player,
+        /* colorName */ "Visuals>Players>Enemies>Chams>Visible Color",
+        /* materialName */ "Visuals>Players>Enemies>Chams>Visible Material",
+        /* wireframeName */ "Visuals>Players>Enemies>Chams>Visible Wireframe",
+        /* occludedColorName */ "Visuals>Players>Enemies>Chams>Occluded Color",
+        /* occludedMaterialName */ "Visuals>Players>Enemies>Chams>Occluded Material",
+        /* overlayColorName */ "Visuals>Players>Enemies>Chams>Visible Overlay Color",
+        /* overlayMaterialName */ "Visuals>Players>Enemies>Chams>Visible Overlay Material",
+        /* overlayWireframeName */ "Visuals>Players>Enemies>Chams>Visible Overlay Wireframe",
+        /* targetColorName */ "Visuals>Players>Enemies>Chams>Target Color",
+        /* targetMaterialName */ "Visuals>Players>Enemies>Chams>Target Material",
+        /* ragdollColorName */ "Visuals>Players>Enemies>Chams>Ragdoll Color",
+        /* ragdollMaterialName */ "Visuals>Players>Enemies>Chams>Ragdoll Material"
+    );
+}
+
+void chamTeammate(
+    void *self,
+    void *ctx,
+    const DrawModelState_t &state,
+    const ModelRenderInfo_t &pInfo,
+    Matrix3x4 *bones,
+    Player *player
+) {
+    chamPlayer(
+        /* self */ self,
+        /* ctx */ ctx,
+        /* state */ state,
+        /* pInfo */ pInfo,
+        /* bones */ bones,
+        /* player */ player,
+        /* colorName */ "Visuals>Players>Teammates>Chams>Visible Color",
+        /* materialName */ "Visuals>Players>Teammates>Chams>Visible Material",
+        /* wireframeName */ "Visuals>Players>Teammates>Chams>Visible Wireframe",
+        /* occludedColorName */ "Visuals>Players>Teammates>Chams>Occluded Color",
+        /* occludedMaterialName */ "Visuals>Players>Teammates>Chams>Occluded Material",
+        /* overlayColorName */ "Visuals>Players>Teammates>Chams>Visible Overlay Color",
+        /* overlayMaterialName */ "Visuals>Players>Teammates>Chams>Visible Overlay Material",
+        /* overlayWireframeName */ "Visuals>Players>Teammates>Chams>Visible Overlay Wireframe",
+        /* targetColorName */ nullptr,
+        /* targetMaterialName */ nullptr,
+        /* ragdollColorName */ "Visuals>Players>Teammates>Chams>Ragdoll Color",
+        /* ragdollMaterialName */ "Visuals>Players>Teammates>Chams>Ragdoll Material"
+    );
+}
+
+void chamPlayer(
+    void *self,
+    void *ctx,
+    const DrawModelState_t &state,
+    const ModelRenderInfo_t &pInfo,
+    Matrix3x4 *bones
+) {
+    auto player = Interfaces::entityList->player(pInfo.entity_index);
+
+    if (player == nullptr) {
+        return;
+    }
+
+    if (player->enemy()) {
+        chamEnemy(self, ctx, state, pInfo, bones, player);
+    } else {
+        chamTeammate(self, ctx, state, pInfo, bones, player);
     }
 }
 
-void chamSleeves(void* thisptr, void* ctx, const DrawModelState_t &state, const ModelRenderInfo_t &pInfo, matrix3x4_t *pCustomBoneToWorld) {
-    cham(thisptr, ctx, state, pInfo, pCustomBoneToWorld, CONFIGCOL("Visuals>Players>LocalPlayer>Sleeve Color"), CONFIGINT("Visuals>Players>LocalPlayer>Sleeve Material"), false, CONFIGBOOL("Visuals>Players>LocalPlayer>Sleeve Wireframe"));
-    /* Arms Overlay */
-    if (CONFIGINT("Visuals>Players>LocalPlayer>Sleeve Overlay Material")) {
-        cham(thisptr, ctx, state, pInfo, pCustomBoneToWorld, CONFIGCOL("Visuals>Players>LocalPlayer>Sleeve Overlay Color"), CONFIGINT("Visuals>Players>LocalPlayer>Sleeve Overlay Material"), false, CONFIGBOOL("Visuals>Players>LocalPlayer>Sleeve Overlay Wireframe"));
-    }
+void chamArms(
+    void *self,
+    void *ctx,
+    const DrawModelState_t &state,
+    const ModelRenderInfo_t &pInfo,
+    Matrix3x4 *bones
+) {
+    // arms
+    cham(
+        /* self */ self,
+        /* ctx */ ctx,
+        /* state */ state,
+        /* pInfo */ pInfo,
+        /* bones */ bones,
+        /* colorName */ "Visuals>Players>LocalPlayer>Arms Color",
+        /* materialName */ "Visuals>Players>LocalPlayer>Arms Material",
+        /* wireframeName */ "Visuals>Players>LocalPlayer>Arms Wireframe"
+    );
+
+    // arms overlay
+    cham(
+        /* self */ self,
+        /* ctx */ ctx,
+        /* state */ state,
+        /* pInfo */ pInfo,
+        /* bones */ bones,
+        /* colorName */ "Visuals>Players>LocalPlayer>Arms Overlay Color",
+        /* materialName */ "Visuals>Players>LocalPlayer>Arms Overlay Material",
+        /* wireframeName */ "Visuals>Players>LocalPlayer>Arms Overlay Wireframe",
+        /* ignoreZ */ false,
+        /* overlay */ true
+    );
 }
 
-void chamWeapon(void* thisptr, void* ctx, const DrawModelState_t &state, const ModelRenderInfo_t &pInfo, matrix3x4_t *pCustomBoneToWorld) {
-    if (Globals::localPlayer) {
-        if (!Globals::localPlayer->scoped()) {
-            cham(thisptr, ctx, state, pInfo, pCustomBoneToWorld, CONFIGCOL("Visuals>Players>LocalPlayer>Weapon Color"), CONFIGINT("Visuals>Players>LocalPlayer>Weapon Material"), false, CONFIGBOOL("Visuals>Players>LocalPlayer>Weapon Wireframe"));
-            /* Weapon Overlay */
-            if (CONFIGINT("Visuals>Players>LocalPlayer>Weapon Overlay Material")) {
-                cham(thisptr, ctx, state, pInfo, pCustomBoneToWorld, CONFIGCOL("Visuals>Players>LocalPlayer>Weapon Overlay Color"), CONFIGINT("Visuals>Players>LocalPlayer>Weapon Overlay Material"), false, CONFIGBOOL("Visuals>Players>LocalPlayer>Weapon Overlay Wireframe"));
-            }
-        }
-        else {
-            Hooks::DrawModelExecute::original(thisptr, ctx, state, pInfo, pCustomBoneToWorld);
-        }
+void chamSleeves(
+    void *self,
+    void *ctx,
+    const DrawModelState_t &state,
+    const ModelRenderInfo_t &pInfo,
+    Matrix3x4 *bones
+) {
+    // sleeves
+    cham(
+        /* self */ self,
+        /* ctx */ ctx,
+        /* state */ state,
+        /* pInfo */ pInfo,
+        /* bones */ bones,
+        /* colorName */ "Visuals>Players>LocalPlayer>Sleeve Color",
+        /* materialName */ "Visuals>Players>LocalPlayer>Sleeve Material",
+        /* wireframeName */ "Visuals>Players>LocalPlayer>Sleeve Wireframe"
+    );
 
-    }
+    // sleeves overlay
+    cham(
+        /* self */ self,
+        /* ctx */ ctx,
+        /* state */ state,
+        /* pInfo */ pInfo,
+        /* bones */ bones,
+        /* colorName */ "Visuals>Players>LocalPlayer>Sleeve Overlay Color",
+        /* materialName */ "Visuals>Players>LocalPlayer>Sleeve Overlay Material",
+        /* wireframeName */ "Visuals>Players>LocalPlayer>Sleeve Overlay Wireframe",
+        /* ignoreZ */ false,
+        /* overlay */ true
+    );
 }
 
-void Features::Chams::drawModelExecute(void* thisptr, void* ctx, const DrawModelState_t &state, const ModelRenderInfo_t &pInfo, matrix3x4_t *pCustomBoneToWorld) {
+void chamWeapon(
+    void *self,
+    void *ctx,
+    const DrawModelState_t &state,
+    const ModelRenderInfo_t &pInfo,
+    Matrix3x4 *bones
+) {
+    if (Globals::localPlayer == nullptr) {
+        Hooks::DrawModelExecute::original(self, ctx, state, pInfo, bones);
+
+        return;
+    }
+
+    if (Globals::localPlayer->scoped()) {
+        Hooks::DrawModelExecute::original(self, ctx, state, pInfo, bones);
+
+        return;
+    }
+
+    // weapon
+    cham(
+        /* self */ self,
+        /* ctx */ ctx,
+        /* state */ state,
+        /* pInfo */ pInfo,
+        /* bones */ bones,
+        /* colorName */ "Visuals>Players>LocalPlayer>Weapon Color",
+        /* materialName */ "Visuals>Players>LocalPlayer>Weapon Material",
+        /* wireframeName */ "Visuals>Players>LocalPlayer>Weapon Wireframe"
+    );
+
+    // weapon overlay
+    cham(
+        /* self */ self,
+        /* ctx */ ctx,
+        /* state */ state,
+        /* pInfo */ pInfo,
+        /* bones */ bones,
+        /* colorName */ "Visuals>Players>LocalPlayer>Weapon Overlay Color",
+        /* materialName */ "Visuals>Players>LocalPlayer>Weapon Overlay Material",
+        /* wireframeName */ "Visuals>Players>LocalPlayer>Weapon Overlay Wireframe",
+        /* ignoreZ */ false,
+        /* overlay */ true
+    );
+}
+
+void Features::Chams::drawModelExecute(
+    void *self,
+    void *ctx,
+    const DrawModelState_t &state,
+    const ModelRenderInfo_t &pInfo,
+    Matrix3x4 *bones
+) {
     createMaterials();
 
-	const char* modelName = Interfaces::modelInfo->GetModelName(pInfo.pModel);
-	if (strstr(modelName, "models/player") && !strstr(modelName, "shadow")) {
-        chamPlayer(thisptr, ctx, state, pInfo, pCustomBoneToWorld);
-    }
-    else if (strstr(modelName, "models/weapons/v_")) {
+	const char *modelName = Interfaces::modelInfo->GetModelName(pInfo.pModel);
+
+	if (strstr(modelName, "models/player")) {
+        if (!strstr(modelName, "shadow")) {
+            chamPlayer(self, ctx, state, pInfo, bones);
+        }
+    } else if (strstr(modelName, "models/weapons/v_")) {
         if (strstr(modelName, "sleeve")) {
-            chamSleeves(thisptr, ctx, state, pInfo, pCustomBoneToWorld);
+            chamSleeves(self, ctx, state, pInfo, bones);
+        } else if (strstr(modelName, "arms")) {
+            chamArms(self, ctx, state, pInfo, bones);
+        } else {
+            chamWeapon(self, ctx, state, pInfo, bones);
         }
-        else if (strstr(modelName, "arms")) {
-            chamArms(thisptr, ctx, state, pInfo, pCustomBoneToWorld);
-        }
-        else {
-            chamWeapon(thisptr, ctx, state, pInfo, pCustomBoneToWorld);
-        }
-    }
-    else if (strstr(modelName, "models/weapons/v_")) {
-        chamWeapon(thisptr, ctx, state, pInfo, pCustomBoneToWorld);
-    }
-    else {
-        Hooks::DrawModelExecute::original(thisptr, ctx, state, pInfo, pCustomBoneToWorld);
+    } else if (strstr(modelName, "models/weapons/v_")) {
+        chamWeapon(self, ctx, state, pInfo, bones);
+    } else {
+        cham(
+            /* self */ self,
+            /* ctx */ ctx,
+            /* state */ state,
+            /* pInfo */ pInfo,
+            /* bones */ bones,
+            /* colorName */ "Visuals>World>World>Model Color",
+            /* materialName */ "Visuals>World>World>Model Material"
+        );
+
+        cham(
+            /* self */ self,
+            /* ctx */ ctx,
+            /* state */ state,
+            /* pInfo */ pInfo,
+            /* bones */ bones,
+            /* colorName */ "Visuals>World>World>Model Overlay Color",
+            /* materialName */ "Visuals>World>World>Model Overlay Material"
+        );
     }
 }

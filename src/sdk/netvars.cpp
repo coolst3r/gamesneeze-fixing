@@ -47,31 +47,32 @@ bool Netvar::init() {
 
     Log::log(LOG, "Initialising offsets");
 
-    Offsets::sendClantag = (Offsets::SendClantag)PatternScan::findFirstInModule("engine_client.so",
-            "55 48 89 E5 41 55 49 89 FD 41 54 BF");
+    Offsets::sendClantag = reinterpret_cast<Offsets::SendClantag>(PatternScan::findFirstInModule("engine_client.so",
+            "55 48 89 E5 41 55 49 89 FD 41 54 BF"));
     Log::log(LOG, " sendClantag | %lx", Offsets::sendClantag);
 
-    Offsets::setPlayerReady = (Offsets::SetPlayerReady)PatternScan::findFirstInModule("/client_client.so",
-            "55 48 89 F7 48 8D 35 ? ? ? ? 48 89 E5 E8 ? ? ? ? 85 C0");
+    Offsets::setPlayerReady = reinterpret_cast<Offsets::SetPlayerReady>(PatternScan::findFirstInModule("/client_client.so",
+            "55 48 89 F7 48 8D 35 ? ? ? ? 48 89 E5 E8 ? ? ? ? 85 C0"));
     Log::log(LOG, " setPlayerReady | %lx", Offsets::setPlayerReady);
 
     Offsets::radarIsHltvCheck = PatternScan::findFirstInModule("/client_client.so", "84 C0 74 50 31 F6");
     Log::log(LOG, " radarIsHltvCheck | %lx", Offsets::radarIsHltvCheck);
 
-    Offsets::initKeyValues = (Offsets::InitKeyValues)PatternScan::findFirstInModule("/client_client.so", 
-            "81 27 00 00 00 FF 55 45 31 C0 48 89 E5 5D");
+    Offsets::initKeyValues = reinterpret_cast<Offsets::InitKeyValues>(PatternScan::findFirstInModule("/client_client.so", 
+            "81 27 00 00 00 FF 55 45 31 C0 48 89 E5 5D"));
     Log::log(LOG, " initKeyValues | %lx", Offsets::initKeyValues);
 
-    Offsets::loadFromBuffer = (Offsets::LoadFromBuffer)PatternScan::findFirstInModule("/client_client.so", 
-            "55 48 89 E5 41 57 41 56 41 55 41 54 49 89 D4 53 48 81 EC ? ? ? ? 48 85"),
+    Offsets::loadFromBuffer = reinterpret_cast<Offsets::LoadFromBuffer>(PatternScan::findFirstInModule("/client_client.so", 
+            "55 48 89 E5 41 57 41 56 41 55 41 54 49 89 D4 53 48 81 EC ? ? ? ? 48 85"));
     Log::log(LOG, " loadFromBuffer | %lx", Offsets::loadFromBuffer);
 
-    Offsets::setNamedSkybox = (Offsets::SetNamedSkybox)PatternScan::findFirstInModule("engine_client.so", 
-            "55 4C 8D 05 ? ? ? ? 48 89 E5 41");
+    Offsets::setNamedSkybox = reinterpret_cast<Offsets::SetNamedSkybox>(PatternScan::findFirstInModule("engine_client.so", 
+            "55 4C 8D 05 ? ? ? ? 48 89 E5 41"));
     Log::log(LOG, " setNamedSkybox | %lx", Offsets::setNamedSkybox);
 
-    Offsets::lineGoesThroughSmoke = (Offsets::LineGoesThroughSmoke)PatternScan::findFirstInModule("/client_client.so", 
-            "55 48 89 E5 41 56 41 55 41 54 53 48 83 EC 30 66 0F D6 45 D0");
+    Offsets::lineGoesThroughSmoke = reinterpret_cast<Offsets::LineGoesThroughSmoke>(PatternScan::findFirstInModule("/client_client.so", 
+            "55 48 89 E5 41 56 41 55 41 54 53 48 83 EC 30 66 0F D6 45 D0"));
+
     Log::log(LOG, " lineGoesThroughSmoke | %lx", Offsets::lineGoesThroughSmoke);
 
     Offsets::moveData = **reinterpret_cast<CMoveData***>(getAbsoluteAddress(PatternScan::findFirstInModule("/client_client.so", 
@@ -86,7 +87,11 @@ bool Netvar::init() {
             "48 8B 05 ? ? ? ? 8B 38 E8 ? ? ? ? 89 C7"), 3, 7));
     Log::log(LOG, " predictionSeed | %lx", Offsets::predictionSeed);
 
-	Offsets::animState = *reinterpret_cast<unsigned int*>(PatternScan::findFirstInModule("/client_client.so",
+	Offsets::animLayers = *reinterpret_cast<unsigned int *>(PatternScan::findFirstInModule("/client_client.so",
+			"55 48 89 E5 41 56 41 55 41 89 F5 41 54 53 48 89 FB 8B") + 35);
+    Log::log(LOG, " animLayers | %lx", Offsets::animLayers);
+
+	Offsets::animState = *reinterpret_cast<unsigned int *>(PatternScan::findFirstInModule("/client_client.so",
 			"55 48 89 E5 53 48 89 FB 48 83 EC 28 48 8B 05 ? ? ? ? 48 8B 00") + 52);
     Log::log(LOG, " animState | %lx", Offsets::animState);
 

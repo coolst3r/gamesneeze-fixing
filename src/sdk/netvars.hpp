@@ -33,11 +33,18 @@ namespace Netvar {
         {std::make_pair("DT_CSPlayer", "m_ArmorValue"), 0},
         {std::make_pair("DT_BaseEntity", "m_nRenderMode"), 0}, // Used for movetype
         {std::make_pair("DT_CSPlayer", "m_nSurvivalTeam"), 0},
+        {std::make_pair("DT_CSPlayer", "m_bGunGameImmunity"), 0},
+        {std::make_pair("CBasePlayer", "m_hViewModel[0]"), 0},
+	    {std::make_pair("DT_CSPlayer", "m_flLowerBodyYawTarget"), 0},
 
         /* Item */
         {std::make_pair("DT_BaseAttributableItem", "m_iItemDefinitionIndex"), 0},
 
         /* Weapon */
+        {std::make_pair("DT_WeaponCSBase", "m_bReloadVisuallyComplete"), 0},
+        {std::make_pair("DT_WeaponCSBase", "m_fAccuracyPenalty"), 0},
+        {std::make_pair("DT_WeaponCSBase", "m_flPostponeFireReadyTime"), 0},
+        {std::make_pair("DT_BaseCombatWeapon", "m_iClip1"), 0},
         {std::make_pair("DT_BaseCombatWeapon", "m_hOwner"), 0},
         {std::make_pair("DT_BaseCombatWeapon", "m_hOwnerEntity"), 0},
         {std::make_pair("DT_BaseCombatWeapon", "m_iItemIDHigh"), 0},
@@ -45,15 +52,20 @@ namespace Netvar {
         {std::make_pair("DT_BaseCombatWeapon", "m_nFallbackPaintKit"), 0},
         {std::make_pair("DT_BaseCombatWeapon", "m_flFallbackWear"), 0},
         {std::make_pair("DT_BaseCombatWeapon", "m_nFallbackStatTrak"), 0},
+        {std::make_pair("DT_BaseCombatWeapon", "m_flNextPrimaryAttack"), 0},
+        {std::make_pair("DT_BaseCombatWeapon", "m_bInReload"), 0},
 
         /* Bomb */
         {std::make_pair("DT_PlantedC4", "m_flC4Blow"), 0},
+        {std::make_pair("DT_PlantedC4", "m_bBombDefused"), 0},
 
         /* Tonemap Controller */
         {std::make_pair("DT_EnvTonemapController", "m_bUseCustomAutoExposureMin"), 0},
         {std::make_pair("DT_EnvTonemapController", "m_bUseCustomAutoExposureMax"), 0},
         {std::make_pair("DT_EnvTonemapController", "m_flCustomAutoExposureMin"), 0},
         {std::make_pair("DT_EnvTonemapController", "m_flCustomAutoExposureMax"), 0},
+        {std::make_pair("DT_EnvTonemapController", "m_bUseCustomBloomScale"), 0},
+	    {std::make_pair("DT_EnvTonemapController", "m_flCustomBloomScale"), 0},
 
         /* Player Resource */
         {std::make_pair("DT_PlayerResource", "m_iPing"), 0},
@@ -93,9 +105,10 @@ namespace Offsets {
     typedef BaseClientState* (*GetLocalClient) (int);
     inline GetLocalClient getLocalClient;
 
-    inline int* predictionSeed;
+    inline int *predictionSeed;
+    inline unsigned int animLayers;
     inline unsigned int animState;
-    inline CMoveData* moveData;
+    inline CMoveData *moveData;
 
     typedef void (*SaveData)(void*, const char*, int , int);
     inline SaveData saveData;

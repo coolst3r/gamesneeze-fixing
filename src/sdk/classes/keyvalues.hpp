@@ -298,9 +298,9 @@ private:
 	char	   m_bEvaluateConditionals; // true, if while parsing this KeyValue, conditionals blocks are evaluated (default true)
 	char	   unused[ 1 ];
 
-	uint32_t m_iUnk1;
-	uint32_t m_iUnk2;
-	
+    uint32_t unk1;
+    uint32_t unk2;
+
 	KeyValues *m_pPeer;	// pointer to next key in list
 	KeyValues *m_pSub;	// pointer to Start of a new sub key list
 	KeyValues *m_pChain;// Search here if it's not in our list

@@ -2,17 +2,16 @@
 #include <map>
 #include <vector>
 
-
-
 std::map<std::string_view, std::vector<RecvProp>> netvars;
 
 uintptr_t getNetvars() {
-    for (ClientClass* cur = Interfaces::client->GetAllClasses(); cur; cur = cur->m_pNext) {
+    for (ClientClass *cur = Interfaces::client->GetAllClasses(); cur; cur = cur->m_pNext) {
         for (int i = 0; i < cur->m_pRecvTable->m_nProps; i++) {
             RecvProp prop = cur->m_pRecvTable->m_pProps[i];
             netvars[cur->m_pRecvTable->m_pNetTableName].push_back(prop);
         }
     }
+
     return 0;
 }
 
@@ -24,7 +23,7 @@ void Menu::drawDevWindow() {
 
     ImGui::Checkbox("Demo window", &demoWindow);
     if (ImGui::Button("Send test notification")) {
-        Features::Notifications::addNotification(ImColor(30, 255, 30), "[gs] Test notification! %f", Interfaces::globals->realtime);
+        Features::Notifications::addNotification(ImColor(30, 255, 30), "[gs] Test notification! %f", Interfaces::globals->realTime);
     }
 
     ImGui::Text("Is in dangerzone: %s", strstr(Offsets::getLocalClient(-1)->m_szLevelNameShort, "dz_") ? "true" : "false");
@@ -76,35 +75,41 @@ void Menu::drawDevWindow() {
             ImGui::TreePop();
         }
         if (ImGui::TreeNode("Globals")) {
-            ImGui::Text("realtime: %f", Interfaces::globals->realtime);
-            ImGui::Text("framecount: %d", Interfaces::globals->framecount);
-            ImGui::Text("absoluteframetime: %f", Interfaces::globals->absoluteframetime);
-            ImGui::Text("absoluteframestarttimestddev: %f", Interfaces::globals->absoluteframestarttimestddev);
-            ImGui::Text("curtime: %f", Interfaces::globals->curtime);
-            ImGui::Text("frametime: %f", Interfaces::globals->frametime);
+            ImGui::Text("realTime: %f", Interfaces::globals->realTime);
+            ImGui::Text("framecount: %d", Interfaces::globals->frameCount);
+            ImGui::Text("absoluteFrameTime: %f", Interfaces::globals->absoluteFrameTime);
+            ImGui::Text("absoluteFrameTimeStandard: %f", Interfaces::globals->absoluteFrameStartTimeStandard);
+            ImGui::Text("currentTime: %f", Interfaces::globals->currentTime);
+            ImGui::Text("frameTime: %f", Interfaces::globals->frameTime);
             ImGui::Text("maxClients: %d", Interfaces::globals->maxClients);
-            ImGui::Text("tickcount: %d", Interfaces::globals->tickcount);
-            ImGui::Text("interval_per_tick: %f", Interfaces::globals->interval_per_tick);
-            ImGui::Text("interpolation_amount: %f", Interfaces::globals->interpolation_amount);
-            ImGui::Text("simTicksThisFrame: %d", Interfaces::globals->simTicksThisFrame);
-            ImGui::Text("network_protocol: %d", Interfaces::globals->network_protocol);
-            ImGui::Text("m_bClient: %d", Interfaces::globals->m_bClient);
-            ImGui::Text("m_bRemoteClient: %d", Interfaces::globals->m_bRemoteClient);
+            ImGui::Text("tickCount: %d", Interfaces::globals->tickCount);
+            ImGui::Text("intervalPerTick: %f", Interfaces::globals->intervalPerTick);
+            ImGui::Text("interpolationAmount: %f", Interfaces::globals->interpolationAmount);
+            ImGui::Text("simulationTicksThisFrame: %d", Interfaces::globals->simulationTicksThisFrame);
+            ImGui::Text("networkProtocol: %d", Interfaces::globals->networkProtocol);
+            ImGui::Text("client: %d", Interfaces::globals->client);
+            ImGui::Text("remoteClient: %d", Interfaces::globals->remoteClient);
             ImGui::TreePop();
         }
         ImGui::TreePop();
     }
+
     if (ImGui::TreeNode("Entities") && Interfaces::engine->IsInGame()) {
-        int highest = Interfaces::entityList->GetHighestEntityIndex();
-        for (int i = 0; i < highest; i++) {
-            Entity* ent = (Entity*)Interfaces::entityList->GetClientEntity(i);
+        int highest = Interfaces::entityList->highestEntityIndex();
+
+        for (int i = 0; i < highest; ++i) {
+            auto ent = Interfaces::entityList->entity(i);
+
             if (ent && ent->isPlayer()) {
-                Player* p = (Player*)ent;
+                Player *p = (Player *)ent;
+
                 if (p->health() > 0 && ImGui::TreeNode(std::to_string(i).c_str(), "PLAYER: %d", i)) {
                     ImGui::Text("dormant: %d", p->dormant());
                     ImGui::Text("isPlayer: %d", p->isPlayer());
+
                     if (ImGui::TreeNode(std::to_string(i+Interfaces::globals->maxClients).c_str(), "Flags")) {
                         int flags = p->flags();
+
                         ImGui::Text("FL_ONGROUND: %d", (flags & (1<<0)) ? 1 : 0);
                         ImGui::Text("FL_DUCKING: %d", (flags & (1<<1)) ? 1 : 0);
                         ImGui::Text("FL_ANIMDUCKING: %d", (flags & (1<<2)) ? 1 : 0);
@@ -139,6 +144,7 @@ void Menu::drawDevWindow() {
                         ImGui::Text("FL_UNBLOCKABLE_BY_PLAYER: %d", (flags & (1<<31)) ? 1 : 0);
                         ImGui::TreePop();
                     }
+
                     ImGui::Text("DT_CSPlayer m_iAccount: %d", p->money());
                     ImGui::Text("DT_BasePlayer m_iHealth: %d", p->health());
                     ImGui::Text("DT_BasePlayer m_iTeamNum: %d", p->team());
@@ -148,7 +154,9 @@ void Menu::drawDevWindow() {
                     ImGui::Text("viewOffset: %f %f %f", p->viewOffset().x, p->viewOffset().y, p->viewOffset().y);
                     ImGui::TreePop();
                 }
-                ClientClass* clientClass = ent->clientClass();
+
+                ClientClass *clientClass = ent->clientClass();
+
                 if (ImGui::TreeNode(std::to_string(i).c_str(), "%s (%d): %d", clientClass->m_pNetworkName, clientClass->m_ClassID, i)) {
                     ImGui::Text("DT_BaseEntity m_bSpotted: %d", ent->spotted());
                     ImGui::Text("origin: %f %f %f", ent->origin().x, ent->origin().y, ent->origin().y);
@@ -156,6 +164,7 @@ void Menu::drawDevWindow() {
                 }
             }
         }
+
         ImGui::TreePop();
     }
 

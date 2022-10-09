@@ -1,68 +1,91 @@
 #include "features.hpp"
 #include <vector>
 
-Entity* findPlayerThatRayHits(Vector start, Vector end, Trace* traceToPlayer) {
-    Ray ray;
-    ray.Init(start, end);
+Entity *findPlayerThatRayHits(Vector start, Vector end, Trace *traceToPlayer) {
+    Ray ray = Ray{start, end};
     TraceFilter filter;
     filter.pSkip = Globals::localPlayer;
-                                    //   hitbox  |  monster  | solid
-    Interfaces::trace->TraceRay(ray, (0x40000000 | 0x40000 | 0x1), &filter, traceToPlayer);
+
+    Interfaces::trace->TraceRay(ray, CONTENTS_HITBOX | CONTENTS_MONSTER | CONTENTS_SOLID, &filter, traceToPlayer);
 
     return traceToPlayer->m_pEntityHit;
 }
 
-void Features::Triggerbot::createMove(CUserCmd* cmd) {
-    if (Globals::localPlayer && CONFIGBOOL("Legit>Triggerbot>Triggerbot") && Menu::CustomWidgets::isKeyDown(CONFIGINT("Legit>Triggerbot>Key"))) {
-        Weapon *weapon = (Weapon *) Interfaces::entityList->GetClientEntity((uintptr_t)Globals::localPlayer->activeWeapon() & 0xFFF); // GetClientEntityFromHandle is being gay
-        if (weapon) {
-            QAngle viewAngles = cmd->viewangles;
-            viewAngles += Globals::localPlayer->aimPunch() * 2;
-            
-            Vector endPos;
-            Trace traceToPlayer;
-            int headHitchance = 0;
-            int bodyHitchance = 0;
+void Features::Triggerbot::createMove(Command *cmd) {
+    if (Globals::localPlayer == nullptr) {
+        return;
+    }
 
-            float spread = RAD2DEG(weapon->GetInaccuracy() + weapon->GetSpread());
-            for (int i = 0; i < 100; i++) {
-                QAngle randomSpreadAngle = {
-                        randFloat(0, spread) - (spread / 2),
-                        randFloat(0, spread) - (spread / 2),
-                        randFloat(0, spread) - (spread / 2)};
-                
-                angleVectors(viewAngles+randomSpreadAngle, endPos);
-                
-                endPos = Globals::localPlayer->eyePos() + (endPos*4096);
+    if (!(CONFIGBOOL("Legit>Triggerbot>Triggerbot") && Menu::CustomWidgets::isKeyDown(CONFIGINT("Legit>Triggerbot>Key")))) {
+        return;
+    }
 
-                Entity* ent = findPlayerThatRayHits(Globals::localPlayer->eyePos(), endPos, &traceToPlayer);
-                if (ent && ent->clientClass()->m_ClassID == CCSPlayer && !ent->dormant() && ((Player*)ent)->isEnemy()) {
-                    switch (traceToPlayer.hitgroup) {
-                        case HITGROUP_HEAD:
-                            headHitchance++;
-                            break;
-                        case HITGROUP_CHEST:
-                        case HITGROUP_STOMACH:
-                            bodyHitchance++;
-                            break;
-                        default:
-                            break;
-                    }
-                }
-            }
+    auto weapon = Interfaces::entityList->activeWeapon(Globals::localPlayer);
+
+    if (weapon == nullptr) {
+        return;
+    }
+
+    auto viewAngles = cmd->viewAngle;
+
+    viewAngles.x += Features::NoVisualRecoil::aimPunch.x * 2.0f;
+    viewAngles.y += Features::NoVisualRecoil::aimPunch.y * 2.0f;            
+
+    auto endPos = Vector{0, 0, 0};
+    Trace traceToPlayer;
+    auto headHitchance = 0;
+    auto bodyHitchance = 0;
+    auto spread = sdk::to_degrees(weapon->inaccuracy() + weapon->spread());
+
+    for (int i = 0; i < 100; ++i) {
+        auto randomSpreadAngle = QAngle{
+            randFloat(0, spread) - (spread / 2),
+            randFloat(0, spread) - (spread / 2),
+            randFloat(0, spread) - (spread / 2)
+        };
+                
+        angleVectors(viewAngles + randomSpreadAngle, endPos);
+                
+        endPos = Globals::localPlayer->eyePos() + (endPos * 4096);
+
+        auto entity = findPlayerThatRayHits(Globals::localPlayer->eyePos(), endPos, &traceToPlayer);
+
+        if (entity == nullptr) {
+            continue;
+        }
+
+        if (entity->clientClass()->m_ClassID != CCSPlayer) {
+            continue;
+        }
+
+        auto player = reinterpret_cast<Player *>(entity);
+
+        if (!player->hittable() && player->visible()) {
+            return;
+        }
+
+        switch (traceToPlayer.hitgroup) {
+        case HITGROUP_HEAD:
+            headHitchance++;
+        break;
+        case HITGROUP_CHEST:
+        case HITGROUP_STOMACH:
+            bodyHitchance++;
+            break;
+        default:
+            break;
+        }
             
-            static bool shotLastTick = false;
-            if (CONFIGINT("Legit>Triggerbot>Head Hitchance") && headHitchance >= CONFIGINT("Legit>Triggerbot>Head Hitchance") && !shotLastTick) {
-                cmd->buttons |= (1 << 0);
-                shotLastTick = true;
-            }
-            else if (CONFIGINT("Legit>Triggerbot>Body Hitchance") && bodyHitchance >= CONFIGINT("Legit>Triggerbot>Body Hitchance") && !shotLastTick) {
-                cmd->buttons |= (1 << 0);
-                shotLastTick = true;
-            }
-            else {
-                shotLastTick = false;
-            }
+        static bool shotLastTick = false;
+
+        if (CONFIGINT("Legit>Triggerbot>Head Hitchance") && headHitchance >= CONFIGINT("Legit>Triggerbot>Head Hitchance") && !shotLastTick) {
+            cmd->buttons |= IN_ATTACK;
+            shotLastTick = true;
+        } else if (CONFIGINT("Legit>Triggerbot>Body Hitchance") && bodyHitchance >= CONFIGINT("Legit>Triggerbot>Body Hitchance") && !shotLastTick) {
+            cmd->buttons |= IN_ATTACK;
+            shotLastTick = true;
+        } else {
+            shotLastTick = false;
         }
     }
 }

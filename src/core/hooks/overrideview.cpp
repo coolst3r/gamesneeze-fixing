@@ -2,36 +2,36 @@
 #include "hooks.hpp"
 #include "../features/features.hpp"
 
+void Hooks::OverrideView::hook(void *self, ViewSetup *view) {
+    auto in_third = CONFIGBOOL("Visuals>World>World>Third Person");
 
-void Hooks::OverrideView::hook(void* thisptr, ViewSetup* setup) {
-    if (Interfaces::engine->IsInGame() && Globals::localPlayer && Globals::localPlayer->health() > 0 && !Globals::localPlayer->scoped()) {
-        setup->fov = CONFIGINT("Visuals>World>World>FOV");
-        // Third Person from Fuzion
-        QAngle viewAngles;
-        Interfaces::engine->GetViewAngles(viewAngles);
-        Trace tr;
-        Ray traceRay;
-        Vector eyePos = Globals::localPlayer->eyePos();
+    // todo: remove QAngle
+    //       rename Vector to Vec3
+    view->angles.x = global::view_angle.x;
+    view->angles.y = global::view_angle.y;
+    view->angles.z = global::view_angle.z;
 
-        Vector camOff = Vector(cos(DEG2RAD(viewAngles.y)) * 100,sin(DEG2RAD(viewAngles.y)) * 100,sin(DEG2RAD(-viewAngles.x)) * 100);
+    Interfaces::input->thirdperson = in_third;
 
-        traceRay.Init(eyePos, (eyePos - camOff));
-        TraceFilter traceFilter;
-        traceFilter.pSkip = Globals::localPlayer;
-        Interfaces::trace->TraceRay(traceRay, 0x1, &traceFilter, &tr);
+    if (Interfaces::input->thirdperson) {
+        auto camera_offset = Vector{
+            cos(sdk::to_radians(global::view_angle.y)) * 100,
+            sin(sdk::to_radians(global::view_angle.y)) * 100,
+            sin(sdk::to_radians(-global::view_angle.x)) * 100
+        };
 
-        if (CONFIGBOOL("Visuals>World>World>Third Person"))
-        Interfaces::input->m_vecCameraOffset = Vector(viewAngles.x, viewAngles.y, 100 * ((tr.fraction < 1.0f) ? tr.fraction : 1.0f) );
-        Interfaces::input->m_fCameraInThirdPerson = CONFIGBOOL("Visuals>World>World>Third Person");
+        // todo: rename Trace to Summary
+        Trace trace;
+        Ray{global::eye_pos, (global::eye_pos - camera_offset)}.ignoredTrace(CONTENTS_SOLID, global::local, &trace);
 
-
-        Weapon *weapon = (Weapon *) Interfaces::entityList->GetClientEntity((uintptr_t) Globals::localPlayer->activeWeapon() & 0xFFF);
-        if(weapon) {
-            if (weapon->itemIndex() == ItemIndex::WEAPON_DECOY || weapon->itemIndex() == ItemIndex::WEAPON_HEGRENADE || weapon->itemIndex() == ItemIndex::WEAPON_FLASHBANG || weapon->itemIndex() == ItemIndex::WEAPON_SMOKEGRENADE || weapon->itemIndex() == ItemIndex::WEAPON_MOLOTOV || weapon->itemIndex() == ItemIndex::WEAPON_INCGRENADE) {
-                Interfaces::input->m_fCameraInThirdPerson = false;
-            }
-        }
+        Interfaces::input->offset = Vector{
+            global::view_angle.x,
+            global::view_angle.y,
+            100 * std::min(trace.fraction, 1.0f)
+        };
     }
-    Globals::FOV = setup->fov;
-    original(thisptr, setup);
+
+    Globals::FOV = view->fov;
+
+    original(self, view);
 }

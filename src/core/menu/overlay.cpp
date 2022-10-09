@@ -3,37 +3,98 @@
 #include <unistd.h>
 #include <pwd.h>
 
-// p100 flex ur distro
-char distro[32];
-void getDistro() {
-    static bool gotDistro = false;
-    if (!gotDistro) {
-        std::ifstream osRelease("/etc/os-release");
-        if (osRelease.is_open()) {
-            std::string line;
-            while (getline(osRelease, line)) {
-                if (strstr(line.c_str(), "ID=") == line.c_str()) {
-                    memcpy(distro, line.substr(3).c_str(), 32);
-                }
-            }
-            osRelease.close();
-        }
-        gotDistro = true;
-    }
+template<class ...Args>
+void drawText(const char *fmt, ImVec2 pos, ImColor color, Args... args) {
+    char buffer[256];
+
+    sprintf(
+        buffer,
+        fmt,
+        args...
+    );
+
+    auto spos = ImVec2{pos.x + 1, pos.y + 2};
+    Globals::drawList->AddText(spos, ImColor{0, 0, 0, 255}, buffer);
+    Globals::drawList->AddText(pos, color, buffer);
 }
 
-void Menu::drawOverlay(ImDrawList* drawList) {
-    getDistro();
-    char hostname[64];
-    gethostname(hostname, 64);
+static float offset = 100.0;
+
+template<class ...Args>
+void drawTextO(const char *fmt, ImColor color, Args... args) {
+    drawText(fmt, ImVec2{100.0, offset}, color, args...);
+
+    offset += 20.0;
+}
+
+void Menu::drawOverlay(ImDrawList *drawList) {
     Globals::drawList = drawList;
-    if(!CONFIGBOOL("Misc>Misc>Misc>Disable Watermark")) {
-        char watermarkText[64];
-        sprintf(watermarkText, "gamesneeze (%s - %s@%s) | %.1f FPS | %i ms", distro, getpwuid(getuid())->pw_name, hostname, ImGui::GetIO().Framerate, (Interfaces::engine->IsInGame() && playerResource) ? playerResource->GetPing(Interfaces::engine->GetLocalPlayer()) : 0);
-        // Hacky way to do black shadow but it works
-        Globals::drawList->AddText(ImVec2(4, 4), ImColor(0, 0, 0, 255), watermarkText);
-        Globals::drawList->AddText(ImVec2(3, 3), ImColor(255, 255, 255, 255), watermarkText);
+
+    if (CONFIGBOOL("Misc>Misc>Misc>Disable Watermark")) {
+        drawText(
+            "gamesneeze | %.1f FPS | %i ms",
+            ImVec2{2, 2},
+            ImColor{255, 255, 255, 255},
+            ImGui::GetIO().Framerate,
+            (Interfaces::engine->IsInGame() && playerResource) ?
+                playerResource->GetPing(Interfaces::engine->GetLocalPlayer()) :
+                0
+        );
     }
+
+    auto x3 = static_cast<float>(Globals::screenSizeX / 2);
+    auto y3 = static_cast<float>(Globals::screenSizeY / 2);
+        
+    drawText(
+        "%s",
+        ImVec2{x3 - 30, y3},
+        ImColor{255, 255, 255, 255},
+        render_anti_aim_state(global::anti_aim_state)
+    );
+
+    offset = 100.0;
+
+    drawTextO(
+        "ammo = %d",
+        ImColor{255, 255, 255, 255},
+        global::ammo
+    );
+
+    drawTextO(
+        "health = %d",
+        ImColor{255, 255, 255, 255},
+        global::health
+    );
+
+    drawTextO(
+        "tick_count = %d",
+        ImColor{255, 255, 255, 255},
+        global::tick_count
+    );
+
+    drawTextO(
+        "choked = %d",
+        ImColor{255, 255, 255, 255},
+        global::choked
+    );
+
+    drawTextO(
+        "send_packet = %s",
+        ImColor{255, 255, 255, 255},
+        global::send_packet ? *global::send_packet ? "true" : "false" : "false"
+    );
+
+    drawTextO(
+        "side = %.2f",
+        ImColor{255, 255, 255, 255},
+        global::side
+    );
+
+    drawTextO(
+        "use_shoot_view_angle = %.2f",
+        ImColor{255, 255, 255, 255},
+        global::use_shoot_view_angle
+    );
 
     Features::ESP::draw();
     Features::RecoilCrosshair::draw();
@@ -42,6 +103,5 @@ void Menu::drawOverlay(ImDrawList* drawList) {
     Features::FlappyBird::draw();
     Features::Notifications::draw();
     Features::Hitmarkers::draw();
-
     Features::Movement::draw();
 }

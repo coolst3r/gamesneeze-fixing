@@ -2,9 +2,21 @@
 #include "../../sdk/sdk.hpp"
 
  void Features::NoVisualRecoil::frameStageNotify(FrameStage frame) {
-    if (frame == FRAME_RENDER_START && Globals::localPlayer && 
-            (CONFIGBOOL("Visuals>Players>LocalPlayer>No Aim Punch") || CONFIGBOOL("Visuals>Players>LocalPlayer>No View Punch"))) {
-        Globals::localPlayer->aimPunch() = CONFIGBOOL("Visuals>Players>LocalPlayer>No Aim Punch") ? QAngle(0, 0, 0) : Globals::localPlayer->aimPunch();
-        Globals::localPlayer->viewPunch() = CONFIGBOOL("Visuals>Players>LocalPlayer>No View Punch") ? QAngle(0, 0, 0) : Globals::localPlayer->viewPunch();
+    if (frame != FRAME_RENDER_START) {
+       return;
+    }
+
+    if (Globals::localPlayer == nullptr) {
+       return;
+    }
+      
+    Features::NoVisualRecoil::aimPunch = Globals::localPlayer->aimPunch();
+
+    if (CONFIGBOOL("Visuals>Players>LocalPlayer>No Aim Punch")) {
+        Globals::localPlayer->aimPunch() = QAngle{};
+    }
+
+    if (CONFIGBOOL("Visuals>Players>LocalPlayer>No View Punch")) {
+        Globals::localPlayer->viewPunch() = QAngle{};
     }
 }

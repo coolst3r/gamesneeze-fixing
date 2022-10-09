@@ -2,12 +2,11 @@
 
 const char* antiAimTypes[] = {"None", "Static", "Jitter", "Fake Jitter", "Real Jitter", "SpingBot (p100)"};
 
+void hitboxSelectBox(const char* configVarName);
+
 void Menu::drawRageTab() {
     ImGui::Checkbox("Enabled", &CONFIGBOOL("Rage>Enabled"));
     ImGui::SameLine();
-    ImGui::TextDisabled("?");
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("Ragebot is in incredibly early development so don't expect much right now. It currently \n doesnt do any kind of bullet sim (no awall/mindmg) so you have to click yourself and headbone is forced");
     ImGui::Separator();
 
     ImGui::BeginChild("Rage", ImVec2((ImGui::GetWindowContentRegionWidth()/2) - 4, 520), true); {
@@ -15,21 +14,41 @@ void Menu::drawRageTab() {
         ImGui::Separator();
         if (ImGui::BeginTabBar("Weapons Tabbar")) {
             if (ImGui::BeginTabItem("Default")) {
-                ImGui::Checkbox("Resolver", &CONFIGBOOL("Rage>RageBot>Default>Resolver"));
-                ImGui::Checkbox("Force Baim if health < X", &CONFIGBOOL("Rage>RageBot>Default>ForceBaim"));
-                if(CONFIGBOOL("Rage>RageBot>Default>ForceBaim")) {
-                    ImGui::Text("Health");
-                    ImGui::SliderInt("##HEALTH", &CONFIGINT("Rage>RageBot>Default>ForceBaimValue"), 1, 100);
+                ImGui::Checkbox("Autowall (BETA)", &CONFIGBOOL("Rage>RageBot>Default>Autowall"));
+
+                if (CONFIGBOOL("Rage>RageBot>Default>Autowall")) {
+                    ImGui::Text("Hit Chance");
+                    ImGui::SetNextItemWidth(ImGui::GetWindowContentRegionWidth());
+                    ImGui::SliderInt("##HitChance", &CONFIGINT("Rage>RageBot>Default>Hit Chance"), 0, 100);
+                    ImGui::Text("Spread Limit");
+                    ImGui::SetNextItemWidth(ImGui::GetWindowContentRegionWidth());
+                    ImGui::SliderInt("##SpreadLimit", &CONFIGINT("Rage>RageBot>Default>Spread Limit"), 0, 100);
+                    ImGui::Text("Minimum Damage");
+                    ImGui::SetNextItemWidth(ImGui::GetWindowContentRegionWidth());
+                    ImGui::SliderInt("##Minimum Damage", &CONFIGINT("Rage>RageBot>Default>Minimum Damage"), 0, 100);
                 }
+
+                ImGui::Checkbox("Resolver", &CONFIGBOOL("Rage>RageBot>Default>Resolver"));
+                hitboxSelectBox("Rage>RageBot>Default>Hitboxes");
                 ImGui::Text("FOV (x10)");
                 ImGui::SetNextItemWidth(ImGui::GetWindowContentRegionWidth());
                 ImGui::SliderInt("##FOV", &CONFIGINT("Rage>RageBot>Default>FOV"), 0, 1800);
+                ImGui::Checkbox("Force Baim if health < X", &CONFIGBOOL("Rage>RageBot>Default>ForceBaim"));
+
+                if (CONFIGBOOL("Rage>RageBot>Default>ForceBaim")) {
+                    ImGui::Text("Health");
+                    ImGui::SliderInt("##HEALTH", &CONFIGINT("Rage>RageBot>Default>ForceBaimValue"), 1, 100);
+                }
+
                 ImGui::EndTabItem();
             }
+
             ImGui::EndTabBar();
         }
+
         ImGui::EndChild();
     }
+
     ImGui::SameLine();
     ImGui::BeginChild("Anti-Aim", ImVec2((ImGui::GetWindowContentRegionWidth()/2) - 4, 520), true); {
         ImGui::Text("Anti-Aim");
@@ -50,7 +69,7 @@ void Menu::drawRageTab() {
 
             ImGui::Text("FakeLag");
             ImGui::SetNextItemWidth(ImGui::GetWindowContentRegionWidth());
-            ImGui::SliderInt("##FakeLag", &CONFIGINT("Rage>AntiAim>FakeLag"), 0, 16);
+            ImGui::SliderInt("##FakeLag", &CONFIGINT("Rage>AntiAim>FakeLag"), 0, 64);
         }
 
         if (CONFIGINT("Rage>AntiAim>Type") == 1) { // Static

@@ -1,19 +1,19 @@
 #include "features.hpp"
 
 void Features::ColorModulation::updateColorModulation() {
-    for(auto i = Interfaces::materialSystem->FirstMaterial(); i != Interfaces::materialSystem->InvalidMaterial(); i = Interfaces::materialSystem->NextMaterial(i)) {
-        IMaterial* material = Interfaces::materialSystem->GetMaterial(i);
-        if (material && (strstr(material->GetTextureGroupName(), "World"))) {
-            material->AlphaModulate(CONFIGCOL("Visuals>World>World>World Color Modulation").Value.w);
-            material->ColorModulate(CONFIGCOL("Visuals>World>World>World Color Modulation").Value.x,
-                                    CONFIGCOL("Visuals>World>World>World Color Modulation").Value.y,
-                                    CONFIGCOL("Visuals>World>World>World Color Modulation").Value.z);
+    for (auto i = Interfaces::materialSystem->FirstMaterial(); i != Interfaces::materialSystem->InvalidMaterial(); i = Interfaces::materialSystem->NextMaterial(i)) {
+        auto material = Interfaces::materialSystem->GetMaterial(i);
+
+        if (material == nullptr) {
+            continue;
         }
-        if (material && strstr(material->GetTextureGroupName(), "SkyBox")) {
-            material->AlphaModulate(CONFIGCOL("Visuals>World>World>SkyBox Color Modulation").Value.w);
-            material->ColorModulate(CONFIGCOL("Visuals>World>World>SkyBox Color Modulation").Value.x,
-                                    CONFIGCOL("Visuals>World>World>SkyBox Color Modulation").Value.y,
-                                    CONFIGCOL("Visuals>World>World>SkyBox Color Modulation").Value.z);
+
+        if (strstr(material->getTextureGroupName(), "World")) {
+            material->setColor(CONFIGCOL("Visuals>World>World>World Color Modulation"));
+        }
+
+        if (strstr(material->getTextureGroupName(), "SkyBox")) {
+            material->setColor(CONFIGCOL("Visuals>World>World>SkyBox Color Modulation"));
         }
     }
 }
